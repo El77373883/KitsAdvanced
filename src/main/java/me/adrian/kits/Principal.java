@@ -22,20 +22,16 @@ public class Principal extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        // Esto crea la carpeta del plugin y la subcarpeta /kits al instalarse
         if (!getDataFolder().exists()) getDataFolder().mkdir();
         File carpetaKits = new File(getDataFolder(), "kits");
         if (!carpetaKits.exists()) carpetaKits.mkdirs();
 
         Bukkit.getPluginManager().registerEvents(this, this);
         getCommand("akits").setExecutor(new KitsCommand());
-        
-        getLogger().info("¡Plugin de Kits cargado correctamente! Carpeta /kits lista.");
     }
 
     private String c(String s) { return ChatColor.translateAlternateColorCodes('&', s); }
 
-    // --- SISTEMA DE PERSISTENCIA (No se borra al reiniciar) ---
     public FileConfiguration getKitConfig(String nombre) {
         File file = new File(getDataFolder() + "/kits", nombre + ".yml");
         return YamlConfiguration.loadConfiguration(file);
@@ -52,32 +48,22 @@ public class Principal extends JavaPlugin implements Listener {
         public boolean onCommand(CommandSender s, Command c, String l, String[] a) {
             if (!(s instanceof Player)) {
                 if (a.length > 0 && a[0].equalsIgnoreCase("reload")) {
-                    s.sendMessage(c("&a&l[!] &fConfiguraciones de kits recargadas desde los archivos .yml"));
+                    s.sendMessage(c("&a&l[!] &fKits recargados."));
                     return true;
                 }
                 return true;
             }
             Player p = (Player) s;
-
             if (a.length == 0) { abrirMenuKits(p); return true; }
-
-            if (!p.hasPermission("kitsadvanced.admin")) {
-                p.sendMessage(c("&cNo tienes permiso para esto."));
-                return true;
-            }
-
+            if (!p.hasPermission("kitsadvanced.admin")) return true;
             if (a[0].equalsIgnoreCase("reload")) {
-                p.sendMessage(c("&a&l✔ &fArchivos de la carpeta /kits recargados con éxito."));
-                p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 1);
+                p.sendMessage(c("&a&l✔ &fArchivos .yml recargados."));
                 return true;
             }
-
             if (a[0].equalsIgnoreCase("panel")) { abrirPanelAdmin(p); return true; }
-
             if (a[0].equalsIgnoreCase("edit") && a.length > 1) {
-                File file = new File(getDataFolder() + "/kits", a[1] + ".yml");
-                if (file.exists()) abrirOpcionesKit(p, a[1]);
-                else p.sendMessage(c("&cEl archivo &7" + a[1] + ".yml &cno existe."));
+                if (new File(getDataFolder() + "/kits", a[1] + ".yml").exists()) abrirOpcionesKit(p, a[1]);
+                else p.sendMessage(c("&cEl kit no existe."));
                 return true;
             }
             return true;
@@ -101,9 +87,8 @@ public class Principal extends JavaPlugin implements Listener {
 
             for (String k : normales) inv.addItem(createKitIcon(k));
 
-            // Fila de separación con el Bloque de Diamante
             for (int i = 27; i <= 35; i++) inv.setItem(i, createItem(Material.GRAY_STAINED_GLASS_PANE, " ", false));
-            inv.setItem(31, createItem(Material.DIAMOND_BLOCK, "&6&lKITS PREMIUM", true, "&7Estos kits requieren permisos especiales."));
+            inv.setItem(31, createItem(Material.DIAMOND_BLOCK, "&6&lKITS PREMIUM", true, "&7Categoría especial."));
 
             int slotPre = 36;
             for (String k : premium) {
@@ -111,17 +96,14 @@ public class Principal extends JavaPlugin implements Listener {
             }
         }
         p.openInventory(inv);
-        p.playSound(p.getLocation(), Sound.BLOCK_CHEST_OPEN, 1, 1);
     }
 
     private ItemStack createKitIcon(String nombreKit) {
         FileConfiguration conf = getKitConfig(nombreKit);
         Material icono = Material.valueOf(conf.getString("icono", "CHEST"));
-        
         List<String> lore = new ArrayList<>();
         lore.add(c("&8&m-------------------"));
         lore.add(c("&6&lCONTENIDO:"));
-        
         List<?> items = conf.getList("items");
         if (items != null && !items.isEmpty()) {
             for (int i = 0; i < Math.min(items.size(), 5); i++) {
@@ -132,26 +114,21 @@ public class Principal extends JavaPlugin implements Listener {
                 lore.add(c(" &7• &f" + it.getAmount() + "x " + name));
             }
             if (items.size() > 5) lore.add(c(" &8y más..."));
-        } else {
-            lore.add(c(" &c(Sin items configurados)"));
         }
-
         lore.add(c("&8&m-------------------"));
         lore.add(c("&7Precio: &a$" + conf.getDouble("precio", 0.0)));
         lore.add(c("&e▶ Click para reclamar"));
-
         return createItem(icono, "&e&lKit: &f" + nombreKit, conf.getBoolean("requiere-permiso"), lore.toArray(new String[0]));
     }
 
     public void abrirPanelAdmin(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&0Gestión de Kits (.yml)"));
-        inv.setItem(4, createItem(Material.NETHER_STAR, "&b&l[+] CREAR NUEVO KIT", true, "&7Se creará un archivo .yml nuevo."));
-        
+        inv.setItem(4, createItem(Material.NETHER_STAR, "&b&l[+] CREAR KIT", true, "&7Escribe el nombre en el chat."));
         File carpeta = new File(getDataFolder(), "kits");
         File[] archivos = carpeta.listFiles((dir, name) -> name.endsWith(".yml"));
         if (archivos != null) {
             for (File f : archivos) {
-                inv.addItem(createItem(Material.PAPER, "&eArchivo: &f" + f.getName(), false, "&7Click: &aEditar", "&cQ: &7Eliminar archivo"));
+                inv.addItem(createItem(Material.PAPER, "&eArchivo: &f" + f.getName(), false, "&7Click: Editar", "&cQ: Eliminar"));
             }
         }
         p.openInventory(inv);
@@ -161,13 +138,10 @@ public class Principal extends JavaPlugin implements Listener {
         editandoKit.put(p.getUniqueId(), k);
         FileConfiguration conf = getKitConfig(k);
         Inventory inv = Bukkit.createInventory(null, 45, c("&0Ajustes: &8" + k));
-        
         boolean pre = conf.getBoolean("requiere-permiso");
-        inv.setItem(11, createItem(Material.BEACON, "&e&lEstado Premium", pre, "&7¿Requiere permiso?: " + (pre ? "&aSÍ" : "&cNO")));
-        inv.setItem(13, createItem(Material.CHEST, "&6&lContenido del Kit", false, "&7Haz click para meter los items."));
-        inv.setItem(15, createItem(Material.SUNFLOWER, "&e&lPrecio", false, "&7Costo actual: &a$" + conf.getDouble("precio")));
-        
-        inv.setItem(40, createItem(Material.ARROW, "&c« Volver al Panel", false));
+        inv.setItem(11, createItem(Material.BEACON, "&e&lPremium", pre, "&7Estado: " + (pre ? "&aON" : "&cOFF")));
+        inv.setItem(13, createItem(Material.CHEST, "&6&lItems", false, "&7Configura el contenido."));
+        inv.setItem(40, createItem(Material.ARROW, "&c« Volver", false));
         p.openInventory(inv);
     }
 
@@ -186,9 +160,8 @@ public class Principal extends JavaPlugin implements Listener {
         } else if (t.equals("Gestión de Kits (.yml)")) {
             e.setCancelled(true);
             if (e.getRawSlot() == 4) { 
-                p.closeInventory(); 
-                modoChat.put(p.getUniqueId(), "CREAR"); 
-                p.sendMessage(c("&b&l[+] &fEscribe el nombre del nuevo kit:")); 
+                p.closeInventory(); modoChat.put(p.getUniqueId(), "CREAR"); 
+                p.sendMessage(c("&b&l[+] &fEscribe el nombre:")); 
             } else if (e.getCurrentItem().getType() == Material.PAPER) {
                 String kitName = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Archivo: ", "").replace(".yml", "");
                 if (e.getClick() == ClickType.DROP) {
@@ -230,23 +203,20 @@ public class Principal extends JavaPlugin implements Listener {
     private void darKit(Player p, String k) {
         FileConfiguration conf = getKitConfig(k);
         if (conf.getBoolean("requiere-permiso") && !p.hasPermission("kits.use." + k)) {
-            p.sendMessage(c("&c&l✘ &7No tienes permiso para el kit &f" + k));
+            p.sendMessage(c("&c&l✘ &7Sin permiso para &f" + k));
             return;
         }
         List<?> items = conf.getList("items");
         if (items != null) {
             for (Object o : items) if (o instanceof ItemStack) p.getInventory().addItem((ItemStack) o);
-            p.sendMessage(c("&a&l✔ &7Kit &f" + k + " &7equipado con éxito."));
-            p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+            p.sendMessage(c("&a&l✔ &7Kit &f" + k + " &7equipado."));
         }
     }
 
     private void abrirCofreEditor(Player p, String k) {
         Inventory ed = Bukkit.createInventory(null, 36, c("&0Items de: " + k));
         List<?> items = getKitConfig(k).getList("items");
-        if (items != null) {
-            for (Object i : items) if (i instanceof ItemStack) ed.addItem((ItemStack) i);
-        }
+        if (items != null) for (Object i : items) if (i instanceof ItemStack) ed.addItem((ItemStack) i);
         p.openInventory(ed);
     }
 
@@ -270,7 +240,11 @@ public class Principal extends JavaPlugin implements Listener {
             List<String> l = new ArrayList<>();
             for (String s : lore) l.add(c(s));
             mt.setLore(l);
-            if (glint) { mt.addEnchant(Enchantment.DURABILITY, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
+            if (glint) {
+                // Aquí corregí el error DURABILITY -> UNBREAKING
+                mt.addEnchant(Enchantment.UNBREAKING, 1, true);
+                mt.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+            }
             i.setItemMeta(mt);
         }
         return i;

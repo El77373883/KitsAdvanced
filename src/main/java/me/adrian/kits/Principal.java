@@ -34,7 +34,7 @@ public class Principal extends JavaPlugin implements Listener {
 
     public String c(String m) { return ChatColor.translateAlternateColorCodes('&', m); }
 
-    // --- 1. MENÚ GLOBAL ---
+    // --- 1. MENÚ PRINCIPAL ---
     public void abrirMenuPrincipal(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Menú Global de Kits"));
         ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false, (short) 0);
@@ -45,7 +45,7 @@ public class Principal extends JavaPlugin implements Listener {
         p.openInventory(inv);
     }
 
-    // --- 2. LISTA DE KITS CON COLORES ---
+    // --- 2. LISTA DE KITS ---
     public void abrirListaKits(Player p, boolean premium) {
         Inventory inv = Bukkit.createInventory(null, 54, c(premium ? "&bSección VIP" : "&aSección Gratuita"));
         short color = (short) (premium ? 3 : 5);
@@ -61,12 +61,9 @@ public class Principal extends JavaPlugin implements Listener {
                 FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
                 if (cf.getBoolean("premium") == premium) {
                     String id = f.getName().replace(".yml", "");
-                    String iconoNom = cf.getString("icono", premium ? "DIAMOND_SWORD" : "STONE_SWORD");
-                    String descDefecto = premium ? "&7¡Equipo de Élite! Solo para campeones." : "&7¡Un regalo para nuestros guerreros!";
-                    String desc = cf.getString("descripcion", descDefecto);
-                    
-                    inv.addItem(createItem(Material.valueOf(iconoNom), "&e&l" + cf.getString("nombre_visual"), premium, (short) 0, 
-                        desc, "&8-------------------------", "&7ID: " + id, "&eClick Izquierdo: &fVer contenido", "&bClick Derecho: &fObtener Kit"));
+                    String icono = cf.getString("icono", premium ? "DIAMOND_SWORD" : "STONE_SWORD");
+                    inv.addItem(createItem(Material.valueOf(icono), "&e&l" + cf.getString("nombre_visual"), premium, (short) 0, 
+                        "&7ID: " + id, "&8-------------------------", "&eClick Izquierdo: &fVer contenido", "&bClick Derecho: &fObtener Kit"));
                 }
             }
         }
@@ -74,7 +71,7 @@ public class Principal extends JavaPlugin implements Listener {
         p.openInventory(inv);
     }
 
-    // --- 3. EDITORES (ITEMS E ICONO) ---
+    // --- 3. EDITORES (ÍTEMS E ICONO) ---
     public void abrirEditorContenido(Player p, String id) {
         configurandoItems.put(p.getUniqueId(), id);
         Inventory inv = Bukkit.createInventory(null, 45, c("&8Items de: " + id));
@@ -83,14 +80,14 @@ public class Principal extends JavaPlugin implements Listener {
         if (items != null) {
             for (Object item : items) { if (item instanceof ItemStack) inv.addItem((ItemStack) item); }
         }
-        inv.setItem(40, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ÍTEMS", true, (short) 0, "&7Click para guardar el contenido."));
+        inv.setItem(40, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ÍTEMS", true, (short) 0, "&7Click para guardar."));
         p.openInventory(inv);
     }
 
     public void abrirEditorIcono(Player p, String id) {
         configurandoIcono.put(p.getUniqueId(), id);
         Inventory inv = Bukkit.createInventory(null, 27, c("&8Icono de: " + id));
-        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, (short) 0, "&7Pon el item en el centro (slot 13)."));
+        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, (short) 0, "&7Pon el item en el centro (13)."));
         p.openInventory(inv);
     }
 
@@ -102,14 +99,13 @@ public class Principal extends JavaPlugin implements Listener {
         
         inv.setItem(10, createItem(Material.CHEST, "&61. Editar ítems", true, (short) 0));
         inv.setItem(11, createItem(Material.REDSTONE, "&e2. Permiso", cf.getBoolean("permiso_status"), (short) 0));
-        inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, (short) 0, "&7Actual: &f$" + cf.getDouble("precio")));
-        inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, (short) 0, "&7Actual: &f" + cf.getLong("cooldown") + "s"));
+        inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, (short) 0));
+        inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, (short) 0));
         inv.setItem(15, createItem(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, (short) 0));
-        inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, (short) 0, "&7Actual: &f" + cf.getString("nombre_visual")));
+        inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, (short) 0));
         
-        boolean esPre = cf.getBoolean("premium");
-        inv.setItem(19, createItem(esPre ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, (short) 0, esPre ? "&bPREMIUM" : "&aGRATIS"));
-        
+        boolean esPremium = cf.getBoolean("premium");
+        inv.setItem(19, createItem(esPremium ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, (short) 0, esPremium ? "&bPREMIUM" : "&aGRATIS"));
         inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, (short) 0));
         p.openInventory(inv);
     }
@@ -131,38 +127,35 @@ public class Principal extends JavaPlugin implements Listener {
         } else if (t.contains("Items de:") && slot == 40) {
             e.setCancelled(true);
             String id = configurandoItems.remove(p.getUniqueId());
-            File f = new File(getDataFolder(), "kits/" + id + ".yml");
-            FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
+            FileConfiguration cf = getKitConfig(id);
             List<ItemStack> items = new ArrayList<>();
             for (int i = 0; i < 36; i++) {
-                ItemStack item = e.getInventory().getItem(i);
-                if (item != null) items.add(item);
+                if (e.getInventory().getItem(i) != null) items.add(e.getInventory().getItem(i));
             }
             cf.set("items", items);
-            saveKit(f, cf);
+            saveKit(new File(getDataFolder(), "kits/" + id + ".yml"), cf);
             abrirEditorKit(p, id);
         } else if (t.contains("Icono de:") && slot == 22) {
             e.setCancelled(true);
             String id = configurandoIcono.remove(p.getUniqueId());
-            ItemStack icon = e.getInventory().getItem(13);
-            if (icon != null) {
+            if (e.getInventory().getItem(13) != null) {
                 FileConfiguration cf = getKitConfig(id);
-                cf.set("icono", icon.getType().toString());
+                cf.set("icono", e.getInventory().getItem(13).getType().toString());
                 saveKit(new File(getDataFolder(), "kits/" + id + ".yml"), cf);
             }
             abrirEditorKit(p, id);
         } else if (t.contains("Ajustes:")) {
             e.setCancelled(true);
-            String kid = editandoKit.get(p.getUniqueId());
-            File f = new File(getDataFolder(), "kits/" + kid + ".yml");
+            String id = editandoKit.get(p.getUniqueId());
+            File f = new File(getDataFolder(), "kits/" + id + ".yml");
             FileConfiguration config = YamlConfiguration.loadConfiguration(f);
             
-            if (slot == 10) { abrirEditorContenido(p, kid); return; }
+            if (slot == 10) { abrirEditorContenido(p, id); return; }
             else if (slot == 11) config.set("permiso_status", !config.getBoolean("permiso_status"));
-            else if (slot == 12) { p.closeInventory(); esperandoPrecio.put(p.getUniqueId(), kid); return; }
-            else if (slot == 13) { p.closeInventory(); esperandoCooldown.put(p.getUniqueId(), kid); return; }
-            else if (slot == 15) { abrirEditorIcono(p, kid); return; }
-            else if (slot == 16) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), kid); return; }
+            else if (slot == 12) { p.closeInventory(); esperandoPrecio.put(p.getUniqueId(), id); return; }
+            else if (slot == 13) { p.closeInventory(); esperandoCooldown.put(p.getUniqueId(), id); return; }
+            else if (slot == 15) { abrirEditorIcono(p, id); return; }
+            else if (slot == 16) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), id); return; }
             else if (slot == 19) {
                 boolean b = !config.getBoolean("premium");
                 config.set("premium", b);
@@ -170,7 +163,7 @@ public class Principal extends JavaPlugin implements Listener {
             } else if (slot == 49) { abrirMenuPrincipal(p); return; }
             
             saveKit(f, config);
-            abrirEditorKit(p, kid);
+            abrirEditorKit(p, id);
         }
     }
 

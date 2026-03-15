@@ -2,14 +2,11 @@ name: AdvancedKits
 version: 1.0
 main: me.adrian.kits.Principal
 api-version: 1.20 # O la versión que estés usando
-author: Adrian
-description: Plugin de kits avanzado con editor integrado.
-softdepend: [Vault]
 commands:
   akits:
-    description: Comando principal de kits.
-    aliases: [kits]
+    description: Comando principal de kits
+    aliases: [kits, kit]
 permissions:
   kitsadvanced.admin:
-    description: Permiso para administrar kits.
+    description: Permite usar el panel de administrador
     default: op

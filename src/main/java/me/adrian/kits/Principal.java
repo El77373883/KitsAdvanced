@@ -33,34 +33,36 @@ public class Principal extends JavaPlugin implements Listener {
 
     public String c(String m) { return ChatColor.translateAlternateColorCodes('&', m); }
 
-    // --- 1. MENÚ GLOBAL (EL HUB) ---
+    // --- 1. MENÚ GLOBAL ---
     public void abrirMenuPrincipal(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Menú Global de Kits"));
         ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false);
         for (int i = 0; i < 54; i++) inv.setItem(i, vidrio);
 
         inv.setItem(22, createItem(Material.CHEST, "&a&lKITS GRATUITOS", true, "&7Click para ver kits normales."));
-        // Slot 49: El acceso a los kits VIP que pediste
         inv.setItem(49, createItem(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", true, "&7Click para ver kits de prestigio.", "&7Solo para rangos especiales."));
         
         p.openInventory(inv);
     }
 
-    // --- 2. LISTA DE KITS (FILTRADA) ---
+    // --- 2. LISTA DE KITS (CON VIDRIOS DE COLORES) ---
     public void abrirListaKits(Player p, boolean premium) {
-        Inventory inv = Bukkit.createInventory(null, 45, c(premium ? "&bExplorando Kits Premium" : "&aExplorando Kits Gratis"));
+        Inventory inv = Bukkit.createInventory(null, 54, c(premium ? "&bSección VIP" : "&aSección Gratuita"));
         
+        // Vidrios de colores: Azul para Premium, Verde para Normal
+        ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false, (short) (premium ? 3 : 5));
+        for (int i = 0; i < 54; i++) {
+            if (i < 9 || i > 44 || i % 9 == 0 || (i + 1) % 9 == 0) inv.setItem(i, vidrio);
+        }
+
         File folder = new File(getDataFolder(), "kits");
         File[] archivos = folder.listFiles();
-        
         if (archivos != null) {
             for (File f : archivos) {
                 FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
                 if (cf.getBoolean("premium") == premium) {
                     String id = f.getName().replace(".yml", "");
                     Material mat = Material.valueOf(cf.getString("icono", premium ? "DIAMOND_SWORD" : "STONE_SWORD"));
-                    
-                    // Descripción Profesional por defecto
                     String desc = cf.getString("descripcion", premium ? "&7¡Equipo de Élite! Solo para campeones." : "&7¡Un regalo para nuestros guerreros!");
                     
                     inv.addItem(createItem(mat, "&e&l" + cf.getString("nombre_visual"), premium, 
@@ -68,30 +70,27 @@ public class Principal extends JavaPlugin implements Listener {
                 }
             }
         }
-        inv.setItem(40, createItem(Material.ARROW, "&c« Volver al Hub", false));
+        inv.setItem(49, createItem(Material.ARROW, "&c« Volver al Inicio", false));
         p.openInventory(inv);
     }
 
-    // --- 3. EDITOR DE ICONO (TU PETICIÓN DE SUBIR MANUAL) ---
+    // --- 3. SUBIDA MANUAL DE ICONO ---
     public void abrirEditorIcono(Player p, String id) {
         configurandoIcono.put(p.getUniqueId(), id);
-        Inventory inv = Bukkit.createInventory(null, 27, c("&8Icono de: " + id));
-        
-        // Vidrios de relleno para que se vea profesional
-        ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false);
+        Inventory inv = Bukkit.createInventory(null, 27, c("&8Sube el icono para: " + id));
+        ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, "&7Pon el item en el medio ->", false);
         for (int i = 0; i < 27; i++) if(i != 13) inv.setItem(i, vidrio);
 
-        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, "&7Pon el ítem en el centro y click."));
+        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR Y REGRESAR", true, "&7Click aquí cuando pongas el item."));
         p.openInventory(inv);
     }
 
-    // --- 4. PANEL DE AJUSTES (LAS 10 OPCIONES) ---
+    // --- 4. PANEL DE AJUSTES ---
     public void abrirEditorKit(Player p, String id) {
         editandoKit.put(p.getUniqueId(), id);
         FileConfiguration cf = getKitConfig(id);
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Ajustes: " + id));
 
-        // Relleno de vidrios
         ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false);
         for (int i = 0; i < 54; i++) if(i < 9 || i > 44 || i % 9 == 0 || (i+1) % 9 == 0) inv.setItem(i, vidrio);
 
@@ -100,12 +99,10 @@ public class Principal extends JavaPlugin implements Listener {
         inv.setItem(11, createItem(Material.REDSTONE, "&e2. Permiso", perm, "", perm ? "&a&lACTIVADO" : "&c&lDESACTIVADO"));
         inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, "&7$" + cf.getDouble("precio")));
         inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, "&7" + cf.getLong("cooldown") + "s"));
-        boolean temp = cf.getBoolean("temporal");
-        inv.setItem(14, createItem(Material.SOUL_SAND, "&35. Temporal", temp, "", temp ? "&a&lSÍ" : "&c&lNO"));
+        inv.setItem(14, createItem(Material.SOUL_SAND, "&35. Temporal", cf.getBoolean("temporal")));
         
-        // Mostrar icono actual
         Material iconMat = Material.valueOf(cf.getString("icono", cf.getBoolean("premium") ? "DIAMOND_SWORD" : "STONE_SWORD"));
-        inv.setItem(15, createItem(iconMat, "&d6. Cambiar Icono", true, "&7Click para subir uno manual."));
+        inv.setItem(15, createItem(iconMat, "&d6. Cambiar Icono", true, "&7Click para subida manual."));
         
         inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, "&7" + cf.getString("nombre_visual")));
         
@@ -126,17 +123,17 @@ public class Principal extends JavaPlugin implements Listener {
         Player p = (Player) e.getWhoClicked();
         String t = e.getView().getTitle();
 
-        // Manejo de Menús de Jugador
-        if (t.contains("Explorando") || t.contains("Menú Global")) {
+        if (t.contains("Kits") || t.contains("Sección") || t.contains("Menú Global")) {
             e.setCancelled(true);
             if (e.getRawSlot() == 22) abrirListaKits(p, false);
-            if (e.getRawSlot() == 49 && t.contains("Menú Global")) abrirListaKits(p, true);
-            if (e.getRawSlot() == 40) abrirMenuPrincipal(p);
+            else if (e.getRawSlot() == 49) {
+                if(t.contains("Menú Global")) abrirListaKits(p, true);
+                else abrirMenuPrincipal(p);
+            }
             return;
         }
 
-        // Guardar Icono Manual
-        if (t.contains("Icono de:")) {
+        if (t.contains("Sube el icono")) {
             if (e.getRawSlot() == 22) {
                 e.setCancelled(true);
                 String id = configurandoIcono.remove(p.getUniqueId());
@@ -151,7 +148,6 @@ public class Principal extends JavaPlugin implements Listener {
             return;
         }
 
-        // Panel de Ajustes
         if (t.contains("Ajustes:")) {
             e.setCancelled(true);
             String id = editandoKit.get(p.getUniqueId());
@@ -189,12 +185,24 @@ public class Principal extends JavaPlugin implements Listener {
         return i;
     }
 
+    private ItemStack createItem(Material m, String n, boolean glint, short data, String... lore) {
+        ItemStack i = new ItemStack(m, 1, data);
+        ItemMeta mt = i.getItemMeta();
+        mt.setDisplayName(c(n));
+        List<String> l = new ArrayList<>();
+        for (String s : lore) l.add(c(s));
+        mt.setLore(l);
+        if (glint) mt.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+        i.setItemMeta(mt);
+        return i;
+    }
+
     public class KitsCommand implements CommandExecutor {
         @Override
         public boolean onCommand(CommandSender s, Command cmd, String l, String[] a) {
             if (s instanceof Player) {
                 Player p = (Player) s;
-                if (a.length > 0 && a[0].equalsIgnoreCase("admin")) abrirEditorKit(p, a[1]);
+                if (a.length > 0 && a[0].equalsIgnoreCase("admin")) abrirEditorKit(p, a.length > 1 ? a[1] : "kit1");
                 else abrirMenuPrincipal(p);
             }
             return true;

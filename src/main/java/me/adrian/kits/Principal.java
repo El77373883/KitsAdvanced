@@ -37,14 +37,12 @@ public class Principal extends JavaPlugin implements Listener {
                 return true;
             }
 
-            // COMANDO RELOAD
             if (args[0].equalsIgnoreCase("reload")) {
                 reloadConfig();
                 p.sendMessage(color(getConfig().getString("prefix") + getConfig().getString("Messages.Reloaded")));
                 return true;
             }
 
-            // COMANDO INFO
             if (args[0].equalsIgnoreCase("info")) {
                 p.sendMessage(color("&8&m-------&6 KitsAdvanced &8&m-------"));
                 p.sendMessage(color("&eAutor: &fAdrian YT"));
@@ -53,7 +51,6 @@ public class Principal extends JavaPlugin implements Listener {
                 return true;
             }
 
-            // COMANDO CREATE
             if (args[0].equalsIgnoreCase("create") && args.length == 2) {
                 ItemStack item = p.getInventory().getItemInMainHand();
                 if (item.getType() == Material.AIR) {
@@ -66,13 +63,11 @@ public class Principal extends JavaPlugin implements Listener {
                 return true;
             }
 
-            // COMANDO PANEL
             if (args[0].equalsIgnoreCase("panel")) {
                 openAdminPanel(p);
                 return true;
             }
 
-            // SI EL COMANDO NO EXISTE
             p.sendMessage(color(getConfig().getString("prefix") + getConfig().getString("Messages.UnknownCommand")));
             return true;
         }
@@ -89,7 +84,7 @@ public class Principal extends JavaPlugin implements Listener {
                 ItemMeta meta = icon.getItemMeta();
                 meta.setDisplayName(ChatColor.GOLD + "Kit: " + ChatColor.YELLOW + key);
                 List<String> lore = new ArrayList<>();
-                lore.add(ChatColor.GRAY + "Administrar este kit");
+                lore.add(ChatColor.GRAY + "Click para obtener este kit");
                 meta.setLore(lore);
                 icon.setItemMeta(meta);
                 inv.addItem(icon);
@@ -102,6 +97,16 @@ public class Principal extends JavaPlugin implements Listener {
     public void onClick(InventoryClickEvent e) {
         if (e.getView().getTitle().equals(color(getConfig().getString("Messages.AdminPanelTitle")))) {
             e.setCancelled(true);
+            if (e.getCurrentItem() == null || e.getCurrentItem().getType() == Material.AIR) return;
+            
+            Player p = (Player) e.getWhoClicked();
+            String kitName = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Kit: ", "");
+            
+            ItemStack kitItem = getConfig().getItemStack("Kits." + kitName + ".item");
+            if (kitItem != null) {
+                p.getInventory().addItem(kitItem);
+                p.sendMessage(color(getConfig().getString("prefix") + "&a¡Has recibido el kit " + kitName + "!"));
+            }
         }
     }
 

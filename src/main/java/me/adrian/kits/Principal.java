@@ -53,7 +53,6 @@ public class Principal extends JavaPlugin implements Listener {
         }
     }
 
-    // --- MENÚ PRINCIPAL ---
     public void abrirMenuKits(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&0&lMENÚ DE KITS"));
         for (int i = 0; i < 54; i++) {
@@ -83,7 +82,6 @@ public class Principal extends JavaPlugin implements Listener {
                 "&e▶ Click para reclamar");
     }
 
-    // --- PANEL DE ADMIN ---
     public void abrirPanelAdmin(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&0Panel: Gestionar Kits"));
         File[] archivos = new File(getDataFolder(), "kits").listFiles((dir, name) -> name.endsWith(".yml"));
@@ -104,7 +102,6 @@ public class Principal extends JavaPlugin implements Listener {
         p.openInventory(inv);
     }
 
-    // --- PANEL DE AJUSTES CON LAS 9 OPCIONES MEJORADAS ---
     public void abrirOpcionesKit(Player p, String k) {
         editandoKit.put(p.getUniqueId(), k);
         FileConfiguration conf = getKitConfig(k);
@@ -115,45 +112,15 @@ public class Principal extends JavaPlugin implements Listener {
         boolean cool = conf.getBoolean("cooldown-activado", false);
         boolean temp = conf.getBoolean("es-temporal", false);
 
-        // 1. Ítems
-        inv.setItem(10, createItem(Material.TRAPPED_CHEST, "&6&l1. Editar Ítems", false, 
-                "&7Configura los objetos que da el kit.", "&a✔ Siempre activo"));
-        
-        // 2. Permiso Especial
-        inv.setItem(11, createItem(Material.REDSTONE, "&e&l2. Permiso Especial", pre, 
-                "&7Si se activa, requiere permiso para usar.", 
-                pre ? "&a✔ Activado (Premium)" : "&c✘ Desactivado (Gratis)"));
-        
-        // 3. Precio
-        inv.setItem(12, createItem(Material.SUNFLOWER, "&e&l3. Precio", false, 
-                "&7Establece el costo de compra.", "&7Actual: &a$" + conf.getDouble("precio")));
-        
-        // 4. Cooldown
-        inv.setItem(13, createItem(Material.CLOCK, "&b&l4. Cooldown", cool, 
-                "&7Define un tiempo de espera para re-uso.", 
-                cool ? "&a✔ Activado" : "&c✘ Desactivado"));
-        
-        // 5. Kit Temporal
-        inv.setItem(14, createItem(Material.SOUL_SAND, "&b&l5. Kit Temporal", temp, 
-                "&7Los items desaparecen tras el uso.", 
-                temp ? "&a✔ Activado" : "&c✘ Desactivado"));
-
-        // 6. Cambiar Icono
-        inv.setItem(20, createItem(Material.PAINTING, "&d&l6. Cambiar Icono", false, 
-                "&7Cambia la apariencia en el menú.", "&e▶ Click para elegir"));
-
-        // 7. Modificar Nombre
-        inv.setItem(21, createItem(Material.NAME_TAG, "&f&l7. Modificar Nombre", false, 
-                "&7Cambia el nombre interno del kit.", "&7Actual: &f" + k));
-
-        // 8. Tipo Rápido
-        inv.setItem(22, createItem(Material.EMERALD, "&a&l8. Tipo: " + (pre ? "&dPREMIUM" : "&aGRATIS"), pre, 
-                "&7Cambio rápido de categoría.", 
-                pre ? "&a✔ Activado (Premium)" : "&c✘ Desactivado (Gratis)"));
-
-        // 9. Eliminar
-        inv.setItem(24, createItem(Material.BARRIER, "&4&l9. ELIMINAR KIT", false, 
-                "&7Borra el kit para siempre.", "&c⚠ No se puede deshacer"));
+        inv.setItem(10, createItem(Material.TRAPPED_CHEST, "&6&l1. Editar Ítems", false, "&7Configura los objetos.", "&a✔ Siempre activo"));
+        inv.setItem(11, createItem(Material.REDSTONE, "&e&l2. Permiso Especial", pre, "&7Requiere permiso para usar.", pre ? "&a✔ Activado (Premium)" : "&c✘ Desactivado (Gratis)"));
+        inv.setItem(12, createItem(Material.SUNFLOWER, "&e&l3. Precio", false, "&7Costo de compra.", "&7Actual: &a$" + conf.getDouble("precio")));
+        inv.setItem(13, createItem(Material.CLOCK, "&b&l4. Cooldown", cool, "&7Tiempo de espera para re-uso.", cool ? "&a✔ Activado" : "&c✘ Desactivado"));
+        inv.setItem(14, createItem(Material.SOUL_SAND, "&b&l5. Kit Temporal", temp, "&7Items desaparecen tras uso.", temp ? "&a✔ Activado" : "&c✘ Desactivado"));
+        inv.setItem(20, createItem(Material.PAINTING, "&d&l6. Cambiar Icono", false, "&7Apariencia en el menú.", "&e▶ Click para elegir"));
+        inv.setItem(21, createItem(Material.NAME_TAG, "&f&l7. Modificar Nombre", false, "&7Nombre interno del kit.", "&7Actual: &f" + k));
+        inv.setItem(22, createItem(Material.EMERALD, "&a&l8. Tipo: " + (pre ? "&dPREMIUM" : "&aGRATIS"), pre, "&7Categoría del kit.", pre ? "&a✔ Activado (Premium)" : "&c✘ Desactivado (Gratis)"));
+        inv.setItem(24, createItem(Material.BARRIER, "&4&l9. ELIMINAR KIT", false, "&7Borra el kit para siempre.", "&c⚠ No se puede deshacer"));
 
         inv.setItem(40, createItem(Material.ARROW, "&c« Volver al Panel", false));
         p.openInventory(inv);
@@ -264,7 +231,11 @@ public class Principal extends JavaPlugin implements Listener {
         if (mt == null) return i;
         mt.setDisplayName(c(n)); List<String> l = new ArrayList<>();
         for (String s : lore) l.add(c(s)); mt.setLore(l);
-        if (g) { mt.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
+        if (g) {
+            // CAMBIO AQUÍ: Usamos Enchantment.PROTECTION para mayor compatibilidad
+            mt.addEnchant(Enchantment.PROTECTION, 1, true); 
+            mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); 
+        }
         i.setItemMeta(mt); return i;
     }
 }

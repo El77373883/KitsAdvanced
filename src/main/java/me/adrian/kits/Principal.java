@@ -34,17 +34,18 @@ public class Principal extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        Bukkit.getConsoleSender().sendMessage(color("&b&l[KitsAdvanced] &fEsperando testeo... ¡Todo cargado!"));
         Bukkit.getPluginManager().registerEvents(this, this);
         getCommand("akits").setExecutor(new KitsCommand());
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) new KitsPlaceholders().register();
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new KitsPlaceholders().register();
+        }
     }
 
     private String getMsg(String ruta) {
         String lang = getConfig().getString("idioma", "es");
         String prefix = getConfig().getString("mensajes." + lang + ".prefix", "");
         String mensaje = getConfig().getString("mensajes." + lang + "." + ruta, "");
-        return color(prefix + mensaje);
+        return ChatColor.translateAlternateColorCodes('&', prefix + mensaje);
     }
 
     public class KitsCommand implements CommandExecutor {
@@ -52,13 +53,7 @@ public class Principal extends JavaPlugin implements Listener {
         public boolean onCommand(CommandSender s, Command c, String l, String[] a) {
             if (!(s instanceof Player)) return true;
             Player p = (Player) s;
-
             if (a.length == 0) { abrirMenuKits(p); return true; }
-
-            if (a[0].equalsIgnoreCase("help") || (a.length > 1 && a[0].equalsIgnoreCase("list") && a[1].equalsIgnoreCase("command"))) {
-                enviarAyuda(p); return true;
-            }
-
             if (p.hasPermission("kitsadvanced.admin")) {
                 if (a[0].equalsIgnoreCase("create") && a.length > 1) {
                     crearNuevoKit(a[1].toLowerCase());
@@ -75,7 +70,6 @@ public class Principal extends JavaPlugin implements Listener {
     public void abrirMenuKits(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, color("&0&lMenú de Kits"));
         ConfigurationSection sec = getConfig().getConfigurationSection("kits");
-
         if ((sec == null || sec.getKeys(false).isEmpty()) && p.hasPermission("kitsadvanced.admin")) {
             inv.setItem(22, createItem(Material.CHEST, "&b&l¡CREA TU PRIMER KIT!", false, "&7No hay kits.", "&eClick para abrir el panel."));
         } else if (sec != null) {
@@ -92,10 +86,10 @@ public class Principal extends JavaPlugin implements Listener {
     public void abrirOpcionesKit(Player p, String k) {
         editandoKit.put(p.getUniqueId(), k);
         Inventory inv = Bukkit.createInventory(null, 27, color("&0Configurando: " + k));
-        inv.setItem(10, createItem(Material.CHEST, "&6&lEDITAR ÍTEMS", false, "&7Click para editar contenido."));
+        inv.setItem(10, createItem(Material.CHEST, "&6&lÍTEMS", false, "&7Click para editar contenido."));
         boolean pre = getConfig().getBoolean("kits." + k + ".requiere-permiso");
         inv.setItem(12, createItem(pre ? Material.LIME_WOOL : Material.RED_WOOL, "&eESTADO: " + (pre ? "&6PREMIUM" : "&aGRATIS"), pre, "&7Click para cambiar."));
-        inv.setItem(14, createItem(Material.CLOCK, "&b&lCAMBIAR TIEMPO", false, "&7Actual: " + getConfig().getLong("kits." + k + ".tiempo") + " min"));
+        inv.setItem(14, createItem(Material.CLOCK, "&b&lTIEMPO", false, "&7Actual: " + getConfig().getLong("kits." + k + ".tiempo") + " min"));
         inv.setItem(16, createItem(Material.NAME_TAG, "&d&lCAMBIAR NOMBRE", false, "&7Actual: " + k));
         p.openInventory(inv);
     }
@@ -105,14 +99,12 @@ public class Principal extends JavaPlugin implements Listener {
         if (e.getClickedInventory() == null || e.getCurrentItem() == null) return;
         Player p = (Player) e.getWhoClicked();
         String t = ChatColor.stripColor(e.getView().getTitle());
-
         if (t.equals("Menú de Kits")) {
             e.setCancelled(true);
             if (e.getRawSlot() == 22 || e.getRawSlot() == 49) { abrirPanelAdmin(p); return; }
             String k = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName());
             if (p.hasPermission("kitsadvanced.admin")) abrirOpcionesKit(p, k); else darKit(p, k);
         }
-
         if (t.startsWith("Configurando: ")) {
             e.setCancelled(true);
             String k = editandoKit.get(p.getUniqueId());
@@ -124,7 +116,6 @@ public class Principal extends JavaPlugin implements Listener {
             if (e.getRawSlot() == 14) { p.closeInventory(); esperandoTiempo.put(p.getUniqueId(), k); p.sendMessage(color("&bEscribe el tiempo en minutos:")); }
             if (e.getRawSlot() == 16) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), k); p.sendMessage(color("&dEscribe el nuevo nombre:")); }
         }
-
         if (t.equals("Panel de Control")) {
             e.setCancelled(true);
             String k = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Kit: ", "");
@@ -196,21 +187,23 @@ public class Principal extends JavaPlugin implements Listener {
         }
     }
 
-    private void enviarAyuda(Player p) {
-        p.sendMessage(color("&b&l--- Ayuda ---"));
-        p.sendMessage(color("&f/akits &7- Menú."));
-        if (p.hasPermission("kitsadvanced.admin")) {
-            p.sendMessage(color("&b/akits create <nombre> &7- Crear."));
-            p.sendMessage(color("&b/akits panel &7- Panel."));
-        }
-    }
-
     private String color(String s) { return ChatColor.translateAlternateColorCodes('&', s); }
+
     private ItemStack createItem(Material m, String n, boolean brillo, String... lore) {
-        ItemStack i = new ItemStack(m); ItemMeta mt = i.getItemMeta();
-        mt.setDisplayName(color(n)); mt.setLore(Arrays.asList(lore));
-        if (brillo) { mt.addEnchant(Enchantment.DURABILITY, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
-        i.setItemMeta(mt); return i;
+        ItemStack i = new ItemStack(m);
+        ItemMeta mt = i.getItemMeta();
+        if (mt != null) {
+            mt.setDisplayName(color(n));
+            List<String> l = new ArrayList<>();
+            for (String str : lore) l.add(color(str));
+            mt.setLore(l);
+            if (brillo) {
+                mt.addEnchant(Enchantment.DURABILITY, 1, true);
+                mt.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+            }
+            i.setItemMeta(mt);
+        }
+        return i;
     }
 
     public class KitsPlaceholders extends PlaceholderExpansion {

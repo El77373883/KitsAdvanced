@@ -17,57 +17,34 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 public class Principal extends JavaPlugin implements Listener {
 
     private final Map<UUID, String> editandoKit = new HashMap<>();
-    private final Map<UUID, String> esperandoTiempoChat = new HashMap<>();
+    private final Map<UUID, String> esperandoNombre = new HashMap<>();
+    private final Map<UUID, String> esperandoTiempo = new HashMap<>();
 
     @Override
     public void onEnable() {
-        // Creamos la sección de configuración si no existe
-        getConfig().addDefault("configuracion.idioma", "es");
-        getConfig().options().copyDefaults(true);
-        saveConfig();
-        
+        saveDefaultConfig();
+        Bukkit.getConsoleSender().sendMessage(color("&b&l[KitsAdvanced] &fEsperando testeo... ¡Todo cargado!"));
         Bukkit.getPluginManager().registerEvents(this, this);
         getCommand("akits").setExecutor(new KitsCommand());
-
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new KitsPlaceholders().register();
-        }
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) new KitsPlaceholders().register();
     }
 
-    // --- TRADUCTOR DINÁMICO (Lee directamente de la Config) ---
     private String getMsg(String ruta) {
-        // Recarga el valor de la config en cada llamada para permitir cambios manuales en el archivo
-        String lang = getConfig().getString("configuracion.idioma", "es").toLowerCase();
-        boolean isEn = lang.equals("en");
-
-        switch (ruta) {
-            case "menu-titulo": return isEn ? "&0Select Category" : "&0Selecciona Categoría";
-            case "cat-gratis": return isEn ? "&a&lFREE KITS" : "&a&lKITS GRATUITOS";
-            case "cat-premium": return isEn ? "&6&lPREMIUM KITS" : "&6&lKITS PREMIUM";
-            case "lore-gratis": return isEn ? "&7Access for everyone." : "&7Acceso para todos.";
-            case "lore-premium": return isEn ? "&7Only for VIP ranks." : "&7Solo para rangos VIP.";
-            case "back": return isEn ? "&cGo Back" : "&cVolver atrás";
-            case "no-perm": return isEn ? "&c&l✘ &cNo permission." : "&c&l✘ &cSin permiso.";
-            case "lang-changed": return isEn ? "&a&l✔ &fLanguage changed to &eEnglish&f." : "&a&l✔ &fIdioma cambiado a &eEspañol&f.";
-            case "chat-ask": return isEn ? "&bType &lMINUTES &fin chat (or 'cancel')." : "&bEscribe los &lMINUTOS &fen el chat (o 'cancelar').";
-            case "claimed": return isEn ? "&a&l✔ &fKit &e%k% &freceived!" : "&a&l✔ &f¡Kit &e%k% &frecibido!";
-            case "wait": return isEn ? "&cWait &e%m%m %s%s" : "&cEspera &e%m%m %s%s";
-            case "opt-title": return isEn ? "&0Options: " : "&0Opciones: ";
-            case "opt-items": return isEn ? "&7Click to edit content." : "&7Click para editar contenido.";
-            case "opt-cat": return isEn ? "&7Click to change category." : "&7Click para cambiar categoría.";
-            case "opt-time": return isEn ? "&7Click to set time by chat." : "&7Click para poner tiempo por chat.";
-            default: return "";
-        }
+        String lang = getConfig().getString("idioma", "es");
+        String prefix = getConfig().getString("mensajes." + lang + ".prefix", "");
+        String mensaje = getConfig().getString("mensajes." + lang + "." + ruta, "");
+        return color(prefix + mensaje);
     }
 
     public class KitsCommand implements CommandExecutor {
@@ -76,58 +53,50 @@ public class Principal extends JavaPlugin implements Listener {
             if (!(s instanceof Player)) return true;
             Player p = (Player) s;
 
-            if (a.length > 0 && p.hasPermission("kitsadvanced.admin")) {
-                // COMANDO: /akits lang <es/en> -> Esto edita la config.yml automáticamente
-                if (a[0].equalsIgnoreCase("lang") && a.length > 1) {
-                    String nuevoIdioma = a[1].toLowerCase();
-                    if (nuevoIdioma.equals("es") || nuevoIdioma.equals("en")) {
-                        getConfig().set("configuracion.idioma", nuevoIdioma);
-                        saveConfig(); // Guarda el cambio en el archivo físico
-                        p.sendMessage(color(getMsg("lang-changed")));
-                        p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_YES, 1, 1);
-                    } else {
-                        p.sendMessage(color("&cUso/Use: /akits lang <es/en>"));
-                    }
-                    return true;
-                }
-                
-                if (a[0].equalsIgnoreCase("edit") && a.length > 1) {
-                    if (getConfig().contains("kits." + a[1])) abrirOpcionesKit(p, a[1]);
-                    return true;
-                }
-                
-                if (a[0].equalsIgnoreCase("create") && a.length > 1) {
-                    crearNuevoKit(a[1]);
-                    p.sendMessage(color("&a&l✔ &fKit &e" + a[1] + " &fcreado."));
-                    return true;
-                }
+            if (a.length == 0) { abrirMenuKits(p); return true; }
+
+            if (a[0].equalsIgnoreCase("help") || (a.length > 1 && a[0].equalsIgnoreCase("list") && a[1].equalsIgnoreCase("command"))) {
+                enviarAyuda(p); return true;
             }
-            abrirMenuCategorias(p);
+
+            if (p.hasPermission("kitsadvanced.admin")) {
+                if (a[0].equalsIgnoreCase("create") && a.length > 1) {
+                    crearNuevoKit(a[1].toLowerCase());
+                    p.sendMessage(getMsg("kit-created").replace("%kit%", a[1]));
+                    return true;
+                }
+                if (a[0].equalsIgnoreCase("panel")) { abrirPanelAdmin(p); return true; }
+                if (a[0].equalsIgnoreCase("reload")) { reloadConfig(); p.sendMessage(getMsg("reload")); return true; }
+            }
             return true;
         }
     }
 
-    // --- MANEJO DE INVENTARIOS ---
-    public void abrirMenuCategorias(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 54, color(getMsg("menu-titulo")));
-        inv.setItem(48, createItem(Material.CHEST, getMsg("cat-gratis"), getMsg("lore-gratis")));
-        inv.setItem(50, createItem(Material.NETHER_STAR, getMsg("cat-premium"), getMsg("lore-premium")));
+    public void abrirMenuKits(Player p) {
+        Inventory inv = Bukkit.createInventory(null, 54, color("&0&lMenú de Kits"));
+        ConfigurationSection sec = getConfig().getConfigurationSection("kits");
+
+        if ((sec == null || sec.getKeys(false).isEmpty()) && p.hasPermission("kitsadvanced.admin")) {
+            inv.setItem(22, createItem(Material.CHEST, "&b&l¡CREA TU PRIMER KIT!", false, "&7No hay kits.", "&eClick para abrir el panel."));
+        } else if (sec != null) {
+            for (String k : sec.getKeys(false)) {
+                boolean pre = getConfig().getBoolean("kits." + k + ".requiere-permiso");
+                inv.addItem(createItem(pre ? Material.NETHER_STAR : Material.CHEST, (pre ? "&6&l" : "&a&l") + k, pre, 
+                    "&7Estado: " + (pre ? "&6Premium" : "&aGratis"), p.hasPermission("kitsadvanced.admin") ? "&e(Click para editar)" : "&7Click para reclamar."));
+            }
+        }
+        if (p.hasPermission("kitsadvanced.admin")) inv.setItem(49, createItem(Material.DIAMOND, "&b&lPANEL DE ADMIN", true, "&7Configuración total."));
         p.openInventory(inv);
     }
 
-    public void abrirMenuKits(Player p, boolean premium) {
-        String titulo = premium ? getMsg("cat-premium") : getMsg("cat-gratis");
-        Inventory inv = Bukkit.createInventory(null, 54, color(titulo));
-        ConfigurationSection sec = getConfig().getConfigurationSection("kits");
-        if (sec != null) {
-            for (String k : sec.getKeys(false)) {
-                if (getConfig().getBoolean("kits." + k + ".requiere-permiso") == premium) {
-                    String colorNombre = premium ? "&6&l" : "&a&l";
-                    inv.addItem(createItem(premium ? Material.NETHER_STAR : Material.CHEST, colorNombre + k, "&7Click."));
-                }
-            }
-        }
-        inv.setItem(49, createItem(Material.ARROW, getMsg("back")));
+    public void abrirOpcionesKit(Player p, String k) {
+        editandoKit.put(p.getUniqueId(), k);
+        Inventory inv = Bukkit.createInventory(null, 27, color("&0Configurando: " + k));
+        inv.setItem(10, createItem(Material.CHEST, "&6&lEDITAR ÍTEMS", false, "&7Click para editar contenido."));
+        boolean pre = getConfig().getBoolean("kits." + k + ".requiere-permiso");
+        inv.setItem(12, createItem(pre ? Material.LIME_WOOL : Material.RED_WOOL, "&eESTADO: " + (pre ? "&6PREMIUM" : "&aGRATIS"), pre, "&7Click para cambiar."));
+        inv.setItem(14, createItem(Material.CLOCK, "&b&lCAMBIAR TIEMPO", false, "&7Actual: " + getConfig().getLong("kits." + k + ".tiempo") + " min"));
+        inv.setItem(16, createItem(Material.NAME_TAG, "&d&lCAMBIAR NOMBRE", false, "&7Actual: " + k));
         p.openInventory(inv);
     }
 
@@ -137,97 +106,81 @@ public class Principal extends JavaPlugin implements Listener {
         Player p = (Player) e.getWhoClicked();
         String t = ChatColor.stripColor(e.getView().getTitle());
 
-        // Navegación de categorías
-        if (t.equals(ChatColor.stripColor(color(getMsg("menu-titulo"))))) {
+        if (t.equals("Menú de Kits")) {
             e.setCancelled(true);
-            if (e.getRawSlot() == 48) abrirMenuKits(p, false);
-            if (e.getRawSlot() == 50) abrirMenuKits(p, true);
+            if (e.getRawSlot() == 22 || e.getRawSlot() == 49) { abrirPanelAdmin(p); return; }
+            String k = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName());
+            if (p.hasPermission("kitsadvanced.admin")) abrirOpcionesKit(p, k); else darKit(p, k);
         }
 
-        // Navegación de kits
-        if (t.contains("KITS")) { 
-            e.setCancelled(true);
-            if (e.getRawSlot() == 49) { abrirMenuCategorias(p); return; }
-            darKit(p, ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()));
-        }
-
-        // Panel de Opciones
-        if (t.startsWith(getMsg("opt-title"))) {
+        if (t.startsWith("Configurando: ")) {
             e.setCancelled(true);
             String k = editandoKit.get(p.getUniqueId());
-            if (e.getRawSlot() == 11) abrirCofreEditor(p, k);
-            if (e.getRawSlot() == 13) {
+            if (e.getRawSlot() == 10) abrirCofreEditor(p, k);
+            if (e.getRawSlot() == 12) {
                 getConfig().set("kits." + k + ".requiere-permiso", !getConfig().getBoolean("kits." + k + ".requiere-permiso"));
                 saveConfig(); abrirOpcionesKit(p, k);
             }
-            if (e.getRawSlot() == 15) {
-                p.closeInventory();
-                esperandoTiempoChat.put(p.getUniqueId(), k);
-                p.sendMessage(color(getMsg("chat-ask")));
-            }
-        }
-    }
-
-    // --- LÓGICA DE KITS ---
-    private void darKit(Player p, String k) {
-        long last = getConfig().getLong("usuarios." + p.getUniqueId() + "." + k, 0);
-        long wait = getConfig().getLong("kits." + k + ".tiempo", 0) * 60000;
-        long rest = (last + wait) - System.currentTimeMillis();
-
-        if (rest > 0 && !p.hasPermission("kitsadvanced.admin")) {
-            long m = TimeUnit.MILLISECONDS.toMinutes(rest);
-            long s = TimeUnit.MILLISECONDS.toSeconds(rest) - TimeUnit.MINUTES.toSeconds(m);
-            p.sendMessage(color(getMsg("wait").replace("%m%", String.valueOf(m)).replace("%s%", String.valueOf(s))));
-            return;
+            if (e.getRawSlot() == 14) { p.closeInventory(); esperandoTiempo.put(p.getUniqueId(), k); p.sendMessage(color("&bEscribe el tiempo en minutos:")); }
+            if (e.getRawSlot() == 16) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), k); p.sendMessage(color("&dEscribe el nuevo nombre:")); }
         }
 
-        if (getConfig().getBoolean("kits." + k + ".requiere-permiso") && !p.hasPermission("kitsadvanced.kit." + k)) {
-            p.sendMessage(color(getMsg("no-perm"))); return;
-        }
-
-        List<?> items = getConfig().getList("kits." + k + ".items");
-        if (items != null && !items.isEmpty()) {
-            for (Object i : items) if (i instanceof ItemStack) p.getInventory().addItem((ItemStack) i);
-            getConfig().set("usuarios." + p.getUniqueId() + "." + k, System.currentTimeMillis());
-            saveConfig();
-            p.sendMessage(color(getMsg("claimed").replace("%k%", k)));
-            p.closeInventory();
+        if (t.equals("Panel de Control")) {
+            e.setCancelled(true);
+            String k = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Kit: ", "");
+            abrirOpcionesKit(p, k);
         }
     }
 
     @EventHandler
-    public void alEscribirEnChat(AsyncPlayerChatEvent e) {
+    public void alChat(AsyncPlayerChatEvent e) {
         Player p = e.getPlayer();
-        if (esperandoTiempoChat.containsKey(p.getUniqueId())) {
+        if (esperandoTiempo.containsKey(p.getUniqueId())) {
             e.setCancelled(true);
-            String k = esperandoTiempoChat.get(p.getUniqueId());
-            try {
-                long m = Long.parseLong(e.getMessage());
-                getConfig().set("kits." + k + ".tiempo", m); saveConfig();
-                esperandoTiempoChat.remove(p.getUniqueId());
-                Bukkit.getScheduler().runTask(this, () -> abrirOpcionesKit(p, k));
-            } catch (Exception ex) { p.sendMessage(color("&cError: Escribe un número / Type a number.")); }
+            String k = esperandoTiempo.remove(p.getUniqueId());
+            try { getConfig().set("kits." + k + ".tiempo", Long.parseLong(e.getMessage())); saveConfig(); } catch (Exception ex) {}
+            Bukkit.getScheduler().runTask(this, () -> abrirOpcionesKit(p, k));
+        }
+        if (esperandoNombre.containsKey(p.getUniqueId())) {
+            e.setCancelled(true);
+            String viejo = esperandoNombre.remove(p.getUniqueId());
+            String nuevo = e.getMessage().toLowerCase();
+            getConfig().set("kits." + nuevo, getConfig().getConfigurationSection("kits." + viejo));
+            getConfig().set("kits." + viejo, null); saveConfig();
+            Bukkit.getScheduler().runTask(this, () -> abrirOpcionesKit(p, nuevo));
         }
     }
 
-    public void abrirOpcionesKit(Player p, String k) {
-        editandoKit.put(p.getUniqueId(), k);
-        Inventory inv = Bukkit.createInventory(null, 27, color(getMsg("opt-title") + k));
-        
-        List<?> i = getConfig().getList("kits." + k + ".items");
-        inv.setItem(11, createItem(Material.CHEST, "&6&lITEMS", getMsg("opt-items"), "&7Total: &e" + (i != null ? i.size() : 0)));
-        
-        boolean pre = getConfig().getBoolean("kits." + k + ".requiere-permiso");
-        inv.setItem(13, createItem(pre ? Material.LIME_WOOL : Material.RED_WOOL, "&e" + (pre ? "PREMIUM" : "FREE"), getMsg("opt-cat")));
-        
-        long t = getConfig().getLong("kits." + k + ".tiempo", 0);
-        inv.setItem(15, createItem(Material.CLOCK, "&b&lCOOLDOWN", "&7" + t + " min", getMsg("opt-time")));
-        
+    private void darKit(Player p, String k) {
+        if (getConfig().getBoolean("kits." + k + ".requiere-permiso") && !p.hasPermission("advancedkits.kits." + k)) {
+            p.sendMessage(getMsg("no-permission")); return;
+        }
+        long rest = (getConfig().getLong("usuarios." + p.getUniqueId() + "." + k, 0) + (getConfig().getLong("kits." + k + ".tiempo", 0) * 60000)) - System.currentTimeMillis();
+        if (rest > 0) { p.sendMessage(getMsg("wait").replace("%time%", (rest / 60000) + "m")); return; }
+        List<?> items = getConfig().getList("kits." + k + ".items");
+        if (items != null) {
+            for (Object i : items) if (i instanceof ItemStack) p.getInventory().addItem((ItemStack) i);
+            p.sendMessage(getMsg("kit-received").replace("%kit%", k));
+            getConfig().set("usuarios." + p.getUniqueId() + "." + k, System.currentTimeMillis()); saveConfig();
+        }
+    }
+
+    private void crearNuevoKit(String n) {
+        getConfig().set("kits." + n + ".requiere-permiso", false);
+        getConfig().set("kits." + n + ".tiempo", 0);
+        getConfig().set("kits." + n + ".items", new ArrayList<ItemStack>());
+        saveConfig();
+    }
+
+    public void abrirPanelAdmin(Player p) {
+        Inventory inv = Bukkit.createInventory(null, 54, color("&0Panel de Control"));
+        ConfigurationSection sec = getConfig().getConfigurationSection("kits");
+        if (sec != null) for (String k : sec.getKeys(false)) inv.addItem(createItem(Material.CHEST, "&bKit: &f" + k, false, "&7Click para opciones."));
         p.openInventory(inv);
     }
 
     private void abrirCofreEditor(Player p, String k) {
-        Inventory ed = Bukkit.createInventory(null, 36, color("Editor: " + k));
+        Inventory ed = Bukkit.createInventory(null, 36, color("&0Editor: " + k));
         List<?> items = getConfig().getList("kits." + k + ".items");
         if (items != null) for (Object i : items) if (i instanceof ItemStack) ed.addItem((ItemStack) i);
         p.openInventory(ed);
@@ -243,24 +196,27 @@ public class Principal extends JavaPlugin implements Listener {
         }
     }
 
-    private void crearNuevoKit(String n) {
-        getConfig().set("kits." + n + ".requiere-permiso", false);
-        getConfig().set("kits." + n + ".tiempo", 0);
-        saveConfig();
+    private void enviarAyuda(Player p) {
+        p.sendMessage(color("&b&l--- Ayuda ---"));
+        p.sendMessage(color("&f/akits &7- Menú."));
+        if (p.hasPermission("kitsadvanced.admin")) {
+            p.sendMessage(color("&b/akits create <nombre> &7- Crear."));
+            p.sendMessage(color("&b/akits panel &7- Panel."));
+        }
     }
 
     private String color(String s) { return ChatColor.translateAlternateColorCodes('&', s); }
-    private ItemStack createItem(Material m, String n, String... lore) {
+    private ItemStack createItem(Material m, String n, boolean brillo, String... lore) {
         ItemStack i = new ItemStack(m); ItemMeta mt = i.getItemMeta();
         mt.setDisplayName(color(n)); mt.setLore(Arrays.asList(lore));
+        if (brillo) { mt.addEnchant(Enchantment.DURABILITY, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
         i.setItemMeta(mt); return i;
     }
 
-    // --- PLACEHOLDERS ---
     public class KitsPlaceholders extends PlaceholderExpansion {
         @Override public @NotNull String getIdentifier() { return "akits"; }
         @Override public @NotNull String getAuthor() { return "Adrian"; }
-        @Override public @NotNull String getVersion() { return "1.8"; }
+        @Override public @NotNull String getVersion() { return "4.5"; }
         @Override public boolean persist() { return true; }
         @Override public String onPlaceholderRequest(Player p, @NotNull String params) { return null; }
     }

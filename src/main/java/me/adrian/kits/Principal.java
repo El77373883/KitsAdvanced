@@ -25,19 +25,42 @@ public class Principal extends JavaPlugin implements Listener {
     private final Map<UUID, String> esperandoChat = new HashMap<>();
     private List<ItemStack> itemsKitGuardados = new ArrayList<>();
     
-    // Estados del Plugin (Variables en memoria)
-    private String nombreKitActivo = "Kit Inicial";
-    private String tiempoKitActivo = "1h";
-    private String categoriaSeleccionada = "DEFAULT";
-    private boolean autoEquiparItems = true;
+    private String nombreKitActivo;
+    private String tiempoKitActivo;
+    private String categoriaSeleccionada;
+    private boolean autoEquiparItems;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        cargarDatosDeConfig(); // Cargar todo al encender el server
         Bukkit.getPluginManager().registerEvents(this, this);
         if (getCommand("akits") != null) {
             getCommand("akits").setExecutor(new KitsCommand());
         }
+    }
+
+    // --- LÓGICA DE CARGA ---
+    private void cargarDatosDeConfig() {
+        nombreKitActivo = getConfig().getString("kit.nombre", "Kit Inicial");
+        tiempoKitActivo = getConfig().getString("kit.tiempo", "1h");
+        categoriaSeleccionada = getConfig().getString("kit.categoria", "DEFAULT");
+        autoEquiparItems = getConfig().getBoolean("kit.autoequip", true);
+        
+        // Cargar items (Spigot los guarda como una lista)
+        if (getConfig().get("kit.items") != null) {
+            itemsKitGuardados = (List<ItemStack>) getConfig().getList("kit.items");
+        }
+    }
+
+    // --- LÓGICA DE GUARDADO ---
+    private void guardarTodo() {
+        getConfig().set("kit.nombre", nombreKitActivo);
+        getConfig().set("kit.tiempo", tiempoKitActivo);
+        getConfig().set("kit.categoria", categoriaSeleccionada);
+        getConfig().set("kit.autoequip", autoEquiparItems);
+        getConfig().set("kit.items", itemsKitGuardados);
+        saveConfig();
     }
 
     public class KitsCommand implements CommandExecutor {
@@ -48,7 +71,7 @@ public class Principal extends JavaPlugin implements Listener {
 
             if (args.length > 0 && args[0].equalsIgnoreCase("panel")) {
                 if (!p.hasPermission("kitsadvanced.admin")) {
-                    enviarDenegacion(p, "&cNo tienes acceso al Panel Administrativo.");
+                    enviarDenegacion(p, "&cNo tienes acceso al Panel.");
                     return true;
                 }
                 abrirPanelAdmin(p);
@@ -59,38 +82,28 @@ public class Principal extends JavaPlugin implements Listener {
         }
     }
 
-    // --- MENÚS DE SELECCIÓN ---
     public void abrirMenuCategorias(Player p) {
         Inventory inv = Bukkit.createInventory(null, 27, color("&0Selecciona Categoría"));
-        inv.setItem(11, createItem(Material.CHEST, "&a&lKITS GRATUITOS", "&7Acceso para todos los usuarios."));
-        inv.setItem(15, createItem(Material.NETHER_STAR, "&6&lKITS PREMIUM", "&e&lEXCLUSIVO &7Requiere rango o dinero."));
+        inv.setItem(11, createItem(Material.CHEST, "&a&lKITS GRATUITOS", "&7Kits para todos."));
+        inv.setItem(15, createItem(Material.NETHER_STAR, "&6&lKITS PREMIUM", "&e&lEXCLUSIVO &7Solo VIPs."));
         p.openInventory(inv);
     }
 
     public void abrirMenuKitsGratis(Player p) {
         Inventory inv = Bukkit.createInventory(null, 27, color("&2Kits Gratuitos"));
-        inv.setItem(13, createItem(Material.CHEST, "&a" + nombreKitActivo, "&7Duración: &e" + tiempoKitActivo, "", "&bClick Izquierdo: &fReclamar", "&bClick Derecho: &fVista Previa"));
+        inv.setItem(13, createItem(Material.CHEST, "&a" + nombreKitActivo, "&7Duración: &e" + tiempoKitActivo));
         p.openInventory(inv);
     }
 
-    // --- PANEL DE ADMINISTRACIÓN ---
     public void abrirPanelAdmin(Player p) {
         Inventory inv = Bukkit.createInventory(null, 27, color("&8&lADMINISTRACIÓN KITS"));
-
-        inv.setItem(10, createItem(Material.CLOCK, "&e&lTIEMPO", "&7Actual: &f" + tiempoKitActivo, "&bClick para editar en chat."));
-        inv.setItem(11, createItem(Material.ANVIL, "&a&lNOMBRE", "&7Actual: &f" + nombreKitActivo, "&bClick para editar en chat."));
+        inv.setItem(10, createItem(Material.CLOCK, "&e&lTIEMPO", "&7Actual: &f" + tiempoKitActivo));
+        inv.setItem(11, createItem(Material.ANVIL, "&a&lNOMBRE", "&7Actual: &f" + nombreKitActivo));
+        inv.setItem(13, createItem(Material.CHEST, "&6&lEDITAR ÍTEMS", "&7Click para meter cosas."));
         
-        // EDITOR VISUAL (COFRE)
-        inv.setItem(13, createItem(Material.CHEST, "&6&lSUBIR ÍTEMS AL KIT", "&7Haz click para abrir el editor.", "&7Lo que metas aquí será el kit.", "", "&e¡Sin configurar códigos!"));
-
-        String stEquip = autoEquiparItems ? "&aON" : "&cOFF";
-        inv.setItem(14, createItem(Material.DIAMOND_CHESTPLATE, "&b&lAUTO-EQUIPAR", "&7Estado: " + stEquip));
-
         String stCat = (categoriaSeleccionada.equals("DEFAULT")) ? "&aGRATIS" : "&6PREMIUM";
-        inv.setItem(15, createItem(Material.BOOK, "&d&lCATEGORÍA DEL KIT", "&7Actual: " + stCat, "&eClick para cambiar."));
-
-        inv.setItem(16, createItem(Material.BARRIER, "&4&lRELOAD CONFIG", "&cClick para recargar."));
-
+        inv.setItem(15, createItem(Material.BOOK, "&d&lCATEGORÍA", "&7Actual: " + stCat));
+        inv.setItem(16, createItem(Material.BARRIER, "&4&lRELOAD", "&cRecargar plugin."));
         p.openInventory(inv);
     }
 
@@ -111,16 +124,21 @@ public class Principal extends JavaPlugin implements Listener {
                 p.openInventory(editor);
             } else if (m == Material.BOOK) {
                 categoriaSeleccionada = categoriaSeleccionada.equals("DEFAULT") ? "PREMIUM" : "DEFAULT";
-                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1, 1);
+                guardarTodo(); // Guardar cambio de categoría
                 abrirPanelAdmin(p);
             } else if (m == Material.CLOCK) {
                 p.closeInventory();
                 esperandoChat.put(p.getUniqueId(), "TIEMPO");
-                p.sendMessage(color("&eEscribe el tiempo (ej: 1d 5h):"));
+                p.sendMessage(color("&eEscribe el tiempo:"));
             } else if (m == Material.ANVIL) {
                 p.closeInventory();
                 esperandoChat.put(p.getUniqueId(), "NOMBRE");
-                p.sendMessage(color("&aEscribe el nuevo nombre:"));
+                p.sendMessage(color("&aEscribe el nombre:"));
+            } else if (m == Material.BARRIER) {
+                reloadConfig();
+                cargarDatosDeConfig();
+                p.sendMessage(color("&a¡Configuración recargada!"));
+                p.closeInventory();
             }
         } 
         else if (titulo.equals(color("&0Selecciona Categoría"))) {
@@ -128,7 +146,7 @@ public class Principal extends JavaPlugin implements Listener {
             if (e.getCurrentItem().getType() == Material.CHEST) abrirMenuKitsGratis(p);
             else if (e.getCurrentItem().getType() == Material.NETHER_STAR) {
                 if (!p.hasPermission("kitsadvanced.premium")) {
-                    enviarDenegacion(p, "&cNo tienes dinero o rango para entrar aquí.");
+                    enviarDenegacion(p, "&cNo tienes permiso.");
                 } else {
                     p.sendMessage(color("&6Abriendo zona Premium..."));
                 }
@@ -145,8 +163,8 @@ public class Principal extends JavaPlugin implements Listener {
                     itemsKitGuardados.add(item);
                 }
             }
-            e.getPlayer().sendMessage(color("&a&l¡SINCRONIZADO! &fLos ítems se han guardado en el kit."));
-            ((Player) e.getPlayer()).playSound(e.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+            guardarTodo(); // <--- AQUÍ SE GUARDA EN EL ARCHIVO CONFIG.YML
+            e.getPlayer().sendMessage(color("&a&l¡Sincronizado y Guardado en Config!"));
         }
     }
 
@@ -156,14 +174,11 @@ public class Principal extends JavaPlugin implements Listener {
         if (esperandoChat.containsKey(p.getUniqueId())) {
             e.setCancelled(true);
             String modo = esperandoChat.get(p.getUniqueId());
-            if (modo.equals("NOMBRE")) {
-                nombreKitActivo = e.getMessage();
-            } else {
-                tiempoKitActivo = e.getMessage();
-            }
+            if (modo.equals("NOMBRE")) nombreKitActivo = e.getMessage();
+            else tiempoKitActivo = e.getMessage();
+            
+            guardarTodo(); // Guardar el nombre/tiempo nuevo en la config
             esperandoChat.remove(p.getUniqueId());
-            p.sendMessage(color("&a¡Cambio aplicado con éxito!"));
-            // Regresar al panel en el hilo principal
             Bukkit.getScheduler().runTask(this, () -> abrirPanelAdmin(p));
         }
     }

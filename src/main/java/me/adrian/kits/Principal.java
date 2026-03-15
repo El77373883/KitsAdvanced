@@ -269,7 +269,16 @@ public class Principal extends JavaPlugin implements Listener {
         if (mt == null) return i;
         mt.setDisplayName(c(n)); List<String> l = new ArrayList<>();
         for (String s : lore) l.add(c(s)); mt.setLore(l);
-        if (g) { mt.addEnchant(Enchantment.ARROW_INFINITE, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
+        if (g) { 
+            // METODO DE SEGURIDAD EXTREMA: Maven no verá nombres de encantamientos aquí.
+            for (Enchantment e : Enchantment.values()) {
+                if (e != null) {
+                    mt.addEnchant(e, 1, true);
+                    break; // Solo necesitamos uno para el brillo
+                }
+            }
+            mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); 
+        }
         i.setItemMeta(mt); return i;
     }
 }

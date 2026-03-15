@@ -108,21 +108,19 @@ public class Principal extends JavaPlugin implements Listener {
         Player p = (Player) e.getWhoClicked();
         String t = ChatColor.stripColor(e.getView().getTitle());
 
-        // --- LÓGICA DE CONFIRMACIÓN DE COMPRA ---
         if (t.equals("¿Confirmar compra?")) {
             e.setCancelled(true);
-            if (e.getRawSlot() == 11) { // BOTÓN VERDE (CONFIRMAR)
+            if (e.getRawSlot() == 11) {
                 String kitName = pendienteConfirmar.get(p.getUniqueId());
                 darKit(p, kitName);
                 p.closeInventory();
-            } else if (e.getRawSlot() == 15) { // BOTÓN ROJO (CANCELAR)
+            } else if (e.getRawSlot() == 15) {
                 p.closeInventory();
                 p.sendMessage(c("&cCompra cancelada."));
             }
             return;
         }
 
-        // --- LÓGICA DE ELIMINACIÓN ---
         if (t.equals("¿Eliminar Kit?")) {
             e.setCancelled(true);
             if (e.getRawSlot() == 11) {
@@ -147,10 +145,13 @@ public class Principal extends JavaPlugin implements Listener {
             }
         }
 
-        // Lógica del Panel Admin
         if (t.equals("ADMIN - Kits")) {
             e.setCancelled(true);
-            if (e.getRawSlot() == 4) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), true); p.sendMessage(c("&eEscribe el nombre del kit:")); }
+            if (e.getRawSlot() == 4) { 
+                p.closeInventory(); 
+                esperandoNombre.put(p.getUniqueId(), true); 
+                p.sendMessage(c("&eEscribe el nombre del kit:")); 
+            }
             else if (e.getRawSlot() >= 9 && e.getCurrentItem() != null) {
                 String k = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Editar: ", "");
                 abrirConfigKit(p, k);
@@ -162,16 +163,15 @@ public class Principal extends JavaPlugin implements Listener {
             String k = editandoKit.get(p.getUniqueId());
             FileConfiguration cf = getKitConfig(k);
             switch(e.getRawSlot()) {
-                case 10: abrirEditorDeItems(p, k); break;
-                case 11: p.closeInventory(); esperandoPrecio.put(p.getUniqueId(), k); break;
-                case 35: abrirConfirmacionEliminar(p, k); break;
-                case 31: abrirPanelAdmin(p); break;
-                // Los otros botones se activan/desactivan aquí (simplificado)
+                case 10: abrirEditorDeItems(p, k); return;
+                case 11: p.closeInventory(); esperandoPrecio.put(p.getUniqueId(), k); p.sendMessage(c("&eEscribe el precio:")); return;
                 case 13: cf.set("requiere-permiso", !cf.getBoolean("requiere-permiso")); break;
-                case 15: cf.set("auto-equip", !cf.getBoolean("auto-equip", true)); break;
+                case 15: cf.set("auto-equip", !cf.getBoolean("auto-equip", false)); break;
+                case 31: abrirPanelAdmin(p); return;
+                case 35: abrirConfirmacionEliminar(p, k); return;
             }
             guardarKit(k, cf);
-            if (e.getRawSlot() != 10 && e.getRawSlot() != 11 && e.getRawSlot() != 35) abrirConfigKit(p, k);
+            abrirConfigKit(p, k);
         }
 
         if (t.contains("Editando Items:")) {
@@ -184,11 +184,8 @@ public class Principal extends JavaPlugin implements Listener {
 
     public void darKit(Player p, String kitName) {
         FileConfiguration cf = getKitConfig(kitName);
-        
-        // Cooldown
         if (checkCooldown(p, kitName, cf.getInt("cooldown"))) return;
 
-        // Dinero
         double precio = cf.getDouble("precio", 0);
         if (precio > 0 && econ != null) {
             if (econ.getBalance(p) < precio) {
@@ -198,19 +195,39 @@ public class Principal extends JavaPlugin implements Listener {
             econ.withdrawPlayer(p, precio);
         }
 
-        // Entrega de items
+        boolean autoEquip = cf.getBoolean("auto-equip", false);
         List<?> items = cf.getList("items");
+        
         if (items != null) {
-            for (Object item : items) {
-                if (item instanceof ItemStack) {
-                    if (p.getInventory().firstEmpty() == -1) p.getWorld().dropItemNaturally(p.getLocation(), (ItemStack) item);
-                    else p.getInventory().addItem((ItemStack) item);
+            for (Object itemObj : items) {
+                if (itemObj instanceof ItemStack) {
+                    ItemStack item = (ItemStack) itemObj;
+                    if (autoEquip && esArmadura(item.getType())) {
+                        equiparOAdd(p, item);
+                    } else {
+                        if (p.getInventory().firstEmpty() == -1) p.getWorld().dropItemNaturally(p.getLocation(), item);
+                        else p.getInventory().addItem(item);
+                    }
                 }
             }
         }
-
         p.sendMessage(c(mensajes.getString("mensajes.recibido").replace("{kit}", kitName)));
         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+    }
+
+    private boolean esArmadura(Material m) {
+        String n = m.name();
+        return n.contains("HELMET") || n.contains("CHESTPLATE") || n.contains("LEGGINGS") || n.contains("BOOTS");
+    }
+
+    private void equiparOAdd(Player p, ItemStack item) {
+        String n = item.getType().name();
+        PlayerInventory inv = p.getInventory();
+        if (n.contains("HELMET") && inv.getHelmet() == null) inv.setHelmet(item);
+        else if (n.contains("CHESTPLATE") && inv.getChestplate() == null) inv.setChestplate(item);
+        else if (n.contains("LEGGINGS") && inv.getLeggings() == null) inv.setLeggings(item);
+        else if (n.contains("BOOTS") && inv.getBoots() == null) inv.setBoots(item);
+        else inv.addItem(item);
     }
 
     private boolean checkCooldown(Player p, String kit, int segs) {
@@ -228,7 +245,6 @@ public class Principal extends JavaPlugin implements Listener {
         return false;
     }
 
-    // --- MÉTODOS DE APOYO (GUI) ---
     public void abrirMenuKits(Player p) {
         String cat = categoriaActual.getOrDefault(p.getUniqueId(), "GRATIS");
         Inventory inv = Bukkit.createInventory(null, 54, c(lang.getString("menus.principal-titulo").replace("{categoria}", cat)));
@@ -271,8 +287,12 @@ public class Principal extends JavaPlugin implements Listener {
         editandoKit.put(p.getUniqueId(), k);
         FileConfiguration cf = getKitConfig(k);
         Inventory inv = Bukkit.createInventory(null, 45, c("&0Configurar Kit: " + k));
-        inv.setItem(10, createItem(Material.CHEST, "&eEditar Items", true));
-        inv.setItem(11, createItem(Material.SUNFLOWER, "&ePrecio: " + cf.getDouble("precio"), false));
+        
+        inv.setItem(10, createItem(Material.CHEST, "&6&l1. &eEditar Items", true));
+        inv.setItem(11, createItem(Material.SUNFLOWER, "&e&l2. &ePrecio: &a$" + cf.getDouble("precio"), false));
+        inv.setItem(13, createItem(Material.IRON_DOOR, "&d&l3. &eRequiere Permiso", cf.getBoolean("requiere-permiso")));
+        inv.setItem(15, createItem(Material.ARMOR_STAND, "&a&l4. &eAuto-Equipar", cf.getBoolean("auto-equip", false), "&7Estado: " + (cf.getBoolean("auto-equip") ? "&aON" : "&cOFF")));
+        
         inv.setItem(31, createItem(Material.ARROW, "&cVolver", false));
         inv.setItem(35, createItem(Material.BARRIER, "&4&lELIMINAR", true));
         p.openInventory(inv);
@@ -302,7 +322,6 @@ public class Principal extends JavaPlugin implements Listener {
         p.openInventory(inv);
     }
 
-    // --- UTILIDADES ---
     private ItemStack createItem(Material m, String n, boolean glint, String... lore) {
         ItemStack i = new ItemStack(m != null ? m : Material.STONE);
         ItemMeta mt = i.getItemMeta();
@@ -339,8 +358,12 @@ public class Principal extends JavaPlugin implements Listener {
         }
         if (esperandoPrecio.containsKey(p.getUniqueId())) {
             e.setCancelled(true); String k = esperandoPrecio.remove(p.getUniqueId());
-            FileConfiguration cf = getKitConfig(k); cf.set("precio", Double.parseDouble(e.getMessage()));
-            guardarKit(k, cf);
+            try {
+                double pr = Double.parseDouble(e.getMessage());
+                FileConfiguration cf = getKitConfig(k); cf.set("precio", pr);
+                guardarKit(k, cf);
+                p.sendMessage(c("&aPrecio actualizado a " + pr));
+            } catch (Exception ex) { p.sendMessage(c("&cNúmero inválido.")); }
             Bukkit.getScheduler().runTask(this, () -> abrirConfigKit(p, k));
         }
     }
@@ -349,6 +372,7 @@ public class Principal extends JavaPlugin implements Listener {
         File f = new File(getDataFolder() + "/kits", n + ".yml");
         FileConfiguration c = YamlConfiguration.loadConfiguration(f);
         c.set("precio", 0.0); c.set("cooldown", 3600); c.set("requiere-permiso", false);
+        c.set("auto-equip", false);
         c.set("items", new ArrayList<ItemStack>());
         try { c.save(f); } catch (IOException e) {}
     }

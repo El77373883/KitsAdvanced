@@ -17,13 +17,11 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
-import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class Principal extends JavaPlugin implements Listener {
-
     private static Economy econ = null;
     private final Map<UUID, String> editandoKit = new HashMap<>();
     private final Map<UUID, String> modoChat = new HashMap<>();
@@ -31,372 +29,69 @@ public class Principal extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        // 1. Inicialización de Carpetas
-        if (!getDataFolder().exists()) getDataFolder().mkdirs();
-        File kitsDir = new File(getDataFolder(), "kits");
-        File userDir = new File(getDataFolder(), "userdata");
-        if (!kitsDir.exists()) kitsDir.mkdirs();
-        if (!userDir.exists()) userDir.mkdirs();
-
-        // 2. Configuración Base y Bienvenida
+        if (!setupEconomy()) getLogger().severe("Â¡Vault no encontrado! La economÃ­a no funcionarÃ¡.");
+        
         saveDefaultConfig();
-        cargarConfiguracionGlobal();
+        cargarConfigPredeterminada();
         
-        // 3. Dependencias (Vault y Placeholders)
-        setupEconomy();
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new KitPlaceholders(this).register();
-        }
-
-        // 4. Registro de Comandos y Eventos
-        KitsCommand cmdHandler = new KitsCommand();
-        getCommand("akits").setExecutor(cmdHandler);
-        getCommand("akits").setTabCompleter(cmdHandler);
+        new File(getDataFolder(), "kits").mkdirs();
+        new File(getDataFolder(), "userdata").mkdirs();
         Bukkit.getPluginManager().registerEvents(this, this);
-
-        // 5. Verificación de Kit Diario
-        if (getKitConfig("diario") == null) {
-            crearKitBase("diario", false);
-        }
+        getCommand("akits").setExecutor(new KitsCommand());
         
-        getLogger().info(c("&b&lAdvancedKits > &aMotor cargado con éxito."));
+        Bukkit.getConsoleSender().sendMessage(c("&b&lâ¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬"));
+        Bukkit.getConsoleSender().sendMessage(c(getPrefix() + "&a&lSISTEMA PROFESIONAL ACTIVADO"));
+        Bukkit.getConsoleSender().sendMessage(c(getPrefix() + "&fIdioma: &e" + getConfig().getString("Configuracion.idioma").toUpperCase()));
+        Bukkit.getConsoleSender().sendMessage(c("&b&lâ¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬"));
     }
 
-    private void cargarConfiguracionGlobal() {
+    private void cargarConfigPredeterminada() {
         FileConfiguration config = getConfig();
-        config.addDefault("Mensajes.Bienvenida.activado", true);
-        config.addDefault("Mensajes.Bienvenida.texto", Arrays.asList(
-            "&b&l&m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬",
-            "&f¡Hola &b{player}&f, bienvenido!",
-            "&7Disfruta de nuestros kits con &e/akits",
-            "&b&l&m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+        config.addDefault("Configuracion.prefix", "&8[&bAdvancedKits&8] ");
+        config.addDefault("Configuracion.idioma", "es");
+        config.addDefault("Bienvenida.activado", true);
+        config.addDefault("Bienvenida.mensaje", Arrays.asList(
+            "&b&lâ¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬",
+            "{prefix} &fÂ¡Bienvenido, &b{player}&f!",
+            "&7Usa &e/akits &7para ver tus kits.",
+            "&b&lâ¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬â¬"
         ));
-        config.addDefault("Efectos.AlEntrar.sonido", "ENTITY_PLAYER_LEVELUP");
-        config.addDefault("Efectos.AlEntrar.particulas", true);
+        config.addDefault("Bienvenida.efectos.sonido", true);
+        config.addDefault("Bienvenida.efectos.tipo-sonido", "ENTITY_PLAYER_LEVELUP");
+        config.addDefault("Bienvenida.efectos.particulas", true);
         config.options().copyDefaults(true);
         saveConfig();
     }
 
-    private void setupEconomy() {
-        if (getServer().getPluginManager().getPlugin("Vault") == null) return;
+    public String msg(String es, String en) {
+        return getConfig().getString("Configuracion.idioma", "es").equalsIgnoreCase("es") ? es : en;
+    }
+
+    private boolean setupEconomy() {
+        if (getServer().getPluginManager().getPlugin("Vault") == null) return false;
         RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
-        if (rsp != null) econ = rsp.getProvider();
+        return rsp != null && (econ = rsp.getProvider()) != null;
     }
 
-    public String c(String m) {
-        return ChatColor.translateAlternateColorCodes('&', m);
-    }
+    public String getPrefix() { return getConfig().getString("Configuracion.prefix", "&8[&bAdvancedKits&8] "); }
+    public String c(String s) { return ChatColor.translateAlternateColorCodes('&', s); }
 
-    // --- MANEJO DE EVENTOS DE JUGADOR ---
     @EventHandler
-    public void onJoin(PlayerJoinEvent e) {
+    public void alEntrar(PlayerJoinEvent e) {
         Player p = e.getPlayer();
-        if (!getConfig().getBoolean("Mensajes.Bienvenida.activado")) return;
-
+        FileConfiguration config = getConfig();
+        if (!config.getBoolean("Bienvenida.activado", true)) return;
         Bukkit.getScheduler().runTaskLater(this, () -> {
-            for (String s : getConfig().getStringList("Mensajes.Bienvenida.texto")) {
-                p.sendMessage(c(s.replace("{player}", p.getName())));
+            for (String linea : config.getStringList("Bienvenida.mensaje")) {
+                p.sendMessage(c(linea.replace("{player}", p.getName()).replace("{prefix}", getPrefix())));
             }
-            try {
-                String soundName = getConfig().getString("Efectos.AlEntrar.sonido");
-                p.playSound(p.getLocation(), Sound.valueOf(soundName), 1.0f, 1.0f);
-            } catch (Exception ex) {
-                p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+            if (config.getBoolean("Bienvenida.efectos.sonido", true)) {
+                p.playSound(p.getLocation(), Sound.valueOf(config.getString("Bienvenida.efectos.tipo-sonido", "ENTITY_PLAYER_LEVELUP")), 1f, 0.8f);
             }
-        }, 20L);
-    }
-
-    // --- COMANDOS PRINCIPALES ---
-    public class KitsCommand implements CommandExecutor, TabCompleter {
-        @Override
-        public boolean onCommand(CommandSender s, Command cmd, String label, String[] args) {
-            if (!(s instanceof Player)) return true;
-            Player p = (Player) s;
-
-            if (args.length == 0) {
-                categoriaActual.putIfAbsent(p.getUniqueId(), "GRATIS");
-                abrirMenuKits(p);
-                return true;
+            if (config.getBoolean("Bienvenida.efectos.particulas", true)) {
+                p.spawnParticle(Particle.END_ROD, p.getLocation().add(0, 1, 0), 20, 0.4, 0.4, 0.4, 0.05);
             }
-
-            String sub = args[0].toLowerCase();
-            if (sub.equals("admin") || sub.equals("panel")) {
-                if (p.hasPermission("akits.admin")) abrirPanelAdmin(p);
-                else p.sendMessage(c("&cNo tienes permiso."));
-            } 
-            else if (sub.equals("create") && args.length > 1) {
-                if (!p.hasPermission("akits.admin")) return true;
-                boolean esPremium = args.length > 2 && args[2].equalsIgnoreCase("premium");
-                crearKitBase(args[1], esPremium);
-                p.sendMessage(c("&aKit &f" + args[1] + " &acreado como &f" + (esPremium ? "PREMIUM (Diamante)" : "GRATIS (Piedra)")));
-            }
-            else if (sub.equals("reload")) {
-                if (!p.hasPermission("akits.admin")) return true;
-                reloadConfig();
-                p.sendMessage(c("&aPlugin recargado."));
-            }
-            return true;
-        }
-
-        @Override
-        public List<String> onTabComplete(CommandSender s, Command cmd, String alias, String[] args) {
-            if (args.length == 1) return Arrays.asList("admin", "create", "reload", "diario");
-            if (args.length == 3 && args[0].equalsIgnoreCase("create")) return Arrays.asList("default", "premium");
-            return null;
-        }
-    }
-
-    // --- PANELES DE ADMINISTRACIÓN (LOS 11 BOTONES) ---
-    public void abrirOpcionesKit(Player p, String k) {
-        editandoKit.put(p.getUniqueId(), k);
-        FileConfiguration cf = getKitConfig(k);
-        Inventory inv = Bukkit.createInventory(null, 45, c("&8Config: &1" + k));
-
-        // Botones de Configuración
-        inv.setItem(10, createItem(Material.CHEST, "&b1. Editar Contenido", false, "&7Añade o quita los items del kit."));
-        inv.setItem(11, createItem(Material.GOLD_INGOT, "&e2. Precio Actual: &a$" + cf.getDouble("precio"), false, "&7Haz click para cambiar el precio en chat."));
-        inv.setItem(12, createItem(Material.CLOCK, "&63. Cooldown: &f" + cf.getInt("cooldown") + "s", false, "&7Tiempo de espera entre reclamos."));
-        inv.setItem(13, createItem(Material.REDSTONE, "&d4. Categoría Premium: &f" + cf.getBoolean("premium"), cf.getBoolean("premium"), "&7Cambia entre Gratis/Premium. &c(Reinicia items)"));
-        inv.setItem(14, createItem(Material.ITEM_FRAME, "&f5. Icono Actual: &e" + cf.getString("icono"), false, "&7Pon un item en tu mano y click aquí."));
-        inv.setItem(15, createItem(Material.PAPER, "&a6. Mensaje de Reclamo", false, "&7Mensaje que recibe el jugador al obtener el kit."));
-        inv.setItem(16, createItem(Material.IRON_DOOR, "&37. Permiso Requerido", false, "&7Define el permiso necesario para usar este kit."));
-        inv.setItem(20, createItem(Material.LEVER, "&e8. Estado: " + (cf.getBoolean("enabled") ? "&aACTIVADO" : "&cDESACTIVADO"), false, "&7Activa o desactiva el kit globalmente."));
-        inv.setItem(21, createItem(Material.COMMAND_BLOCK, "&59. Comando de Consola", false, "&7Ejecuta un comando al reclamar. &7Usa {player}"));
-        inv.setItem(22, createItem(Material.IRON_CHESTPLATE, "&b10. Auto-Equipar: &f" + cf.getBoolean("auto-equip"), cf.getBoolean("auto-equip"), "&7¿Equipar armadura automáticamente?"));
-        inv.setItem(23, createItem(Material.FIREWORK_ROCKET, "&f11. Efectos Visuales: &f" + cf.getBoolean("efectos"), cf.getBoolean("efectos"), "&7Lanza fuegos artificiales al reclamar."));
-        
-        inv.setItem(40, createItem(Material.BARRIER, "&4&lBORRAR KIT", true, "&c¡Esta acción no se puede deshacer!"));
-
-        p.openInventory(inv);
-    }
-
-    @EventHandler
-    public void onInventoryClick(InventoryClickEvent e) {
-        if (e.getClickedInventory() == null || e.getCurrentItem() == null) return;
-        Player p = (Player) e.getWhoClicked();
-        String title = ChatColor.stripColor(e.getView().getTitle());
-
-        if (title.contains("Config:")) {
-            e.setCancelled(true);
-            String kit = editandoKit.get(p.getUniqueId());
-            FileConfiguration cf = getKitConfig(kit);
-            int slot = e.getRawSlot();
-
-            if (slot == 10) abrirEditorItems(p, kit);
-            else if (slot == 11) { p.closeInventory(); modoChat.put(p.getUniqueId(), kit + ":PRECIO"); p.sendMessage(c("&eEscribe el nuevo &6PRECIO &e(Ej: 500):")); }
-            else if (slot == 12) { p.closeInventory(); modoChat.put(p.getUniqueId(), kit + ":COOLDOWN"); p.sendMessage(c("&eEscribe el &6COOLDOWN &een segundos:")); }
-            else if (slot == 13) {
-                boolean val = !cf.getBoolean("premium");
-                cf.set("premium", val);
-                List<ItemStack> items = new ArrayList<>();
-                items.add(new ItemStack(val ? Material.DIAMOND_SWORD : Material.STONE_SWORD));
-                cf.set("items", items);
-                guardarKit(kit, cf); abrirOpcionesKit(p, kit);
-            }
-            else if (slot == 14) {
-                Material hand = p.getInventory().getItemInMainHand().getType();
-                if (hand != Material.AIR) { cf.set("icono", hand.name()); guardarKit(kit, cf); abrirOpcionesKit(p, kit); }
-            }
-            else if (slot == 15) { p.closeInventory(); modoChat.put(p.getUniqueId(), kit + ":MSG"); p.sendMessage(c("&eEscribe el &6MENSAJE &ede reclamo:")); }
-            else if (slot == 16) { p.closeInventory(); modoChat.put(p.getUniqueId(), kit + ":PERM"); p.sendMessage(c("&eEscribe el &6PERMISO &enecesario:")); }
-            else if (slot == 20) { cf.set("enabled", !cf.getBoolean("enabled")); guardarKit(kit, cf); abrirOpcionesKit(p, kit); }
-            else if (slot == 21) { p.closeInventory(); modoChat.put(p.getUniqueId(), kit + ":CMD"); p.sendMessage(c("&eEscribe el &6COMANDO &esin barra (/):")); }
-            else if (slot == 22) { cf.set("auto-equip", !cf.getBoolean("auto-equip")); guardarKit(kit, cf); abrirOpcionesKit(p, kit); }
-            else if (slot == 23) { cf.set("efectos", !cf.getBoolean("efectos")); guardarKit(kit, cf); abrirOpcionesKit(p, kit); }
-            else if (slot == 40) { new File(getDataFolder() + "/kits", kit + ".yml").delete(); p.closeInventory(); p.sendMessage(c("&cKit eliminado.")); }
-        }
-        else if (title.startsWith("Kits:")) {
-            e.setCancelled(true);
-            if (e.getRawSlot() == 49) {
-                categoriaActual.put(p.getUniqueId(), categoriaActual.get(p.getUniqueId()).equals("GRATIS") ? "PREMIUM" : "GRATIS");
-                abrirMenuKits(p);
-            } else if (e.getRawSlot() < 45 && e.getCurrentItem().getType() != Material.AIR) {
-                reclamarKit(p, ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Kit: ", ""));
-            }
-        }
-        else if (title.contains("Editando Items:")) {
-            if (e.getRawSlot() >= 45) {
-                e.setCancelled(true);
-                if (e.getRawSlot() == 49) {
-                    guardarItemsEditor(e.getInventory(), editandoKit.get(p.getUniqueId()));
-                    abrirOpcionesKit(p, editandoKit.get(p.getUniqueId()));
-                }
-            }
-        }
-    }
-
-    @EventHandler
-    public void onChatInput(AsyncPlayerChatEvent e) {
-        Player p = e.getPlayer();
-        if (!modoChat.containsKey(p.getUniqueId())) return;
-        
-        e.setCancelled(true);
-        String msg = e.getMessage();
-        String[] data = modoChat.remove(p.getUniqueId()).split(":");
-        String kit = data[0];
-        String tipo = data[1];
-        FileConfiguration cf = getKitConfig(kit);
-
-        Bukkit.getScheduler().runTask(this, () -> {
-            try {
-                if (tipo.equals("PRECIO")) cf.set("precio", Double.parseDouble(msg));
-                else if (tipo.equals("COOLDOWN")) cf.set("cooldown", Integer.parseInt(msg));
-                else if (tipo.equals("MSG")) cf.set("mensaje", msg);
-                else if (tipo.equals("PERM")) cf.set("permiso", msg);
-                else if (tipo.equals("CMD")) cf.set("comando", msg);
-                
-                guardarKit(kit, cf);
-                p.sendMessage(c("&a¡Propiedad &f" + tipo + " &aactualizada!"));
-                abrirOpcionesKit(p, kit);
-            } catch (Exception ex) {
-                p.sendMessage(c("&cError: Valor inválido."));
-                abrirOpcionesKit(p, kit);
-            }
-        });
-    }
-
-    // --- LÓGICA CORE DE RECLAMO ---
-    private void reclamarKit(Player p, String k) {
-        FileConfiguration cf = getKitConfig(k);
-        if (cf == null || !cf.getBoolean("enabled", true)) { p.sendMessage(c("&cKit no disponible.")); return; }
-        
-        // Permiso
-        if (!p.hasPermission(cf.getString("permiso"))) {
-            p.sendMessage(c("&cNo tienes permiso para este kit."));
-            return;
-        }
-
-        // Cooldown
-        File uf = new File(getDataFolder() + "/userdata", p.getUniqueId() + ".yml");
-        FileConfiguration uc = YamlConfiguration.loadConfiguration(uf);
-        long last = uc.getLong(k, 0);
-        long cooldownMillis = cf.getInt("cooldown") * 1000L;
-        if (System.currentTimeMillis() - last < cooldownMillis) {
-            long remaining = (cooldownMillis - (System.currentTimeMillis() - last)) / 1000;
-            p.sendMessage(c("&cEspera &f" + remaining + "s &cpara volver a usarlo."));
-            return;
-        }
-
-        // Economía
-        double precio = cf.getDouble("precio");
-        if (precio > 0 && econ != null) {
-            if (econ.getBalance(p) < precio) {
-                p.sendMessage(c("&cNo tienes suficiente dinero ($" + precio + ")."));
-                return;
-            }
-            econ.withdrawPlayer(p, precio);
-        }
-
-        // Entrega
-        List<?> items = cf.getList("items");
-        if (items != null) {
-            for (Object obj : items) {
-                if (obj instanceof ItemStack) {
-                    ItemStack is = (ItemStack) obj;
-                    if (cf.getBoolean("auto-equip")) equiparAuto(p, is);
-                    else p.getInventory().addItem(is);
-                }
-            }
-        }
-
-        // Comando Consola
-        String cmd = cf.getString("comando", "none");
-        if (!cmd.equalsIgnoreCase("none")) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd.replace("{player}", p.getName()));
-        }
-
-        // Efectos
-        if (cf.getBoolean("efectos")) lanzarFuego(p);
-
-        // Guardar uso
-        uc.set(k, System.currentTimeMillis());
-        try { uc.save(uf); } catch (IOException ex) {}
-        p.sendMessage(c(cf.getString("mensaje")));
-    }
-
-    private void equiparAuto(Player p, ItemStack i) {
-        String type = i.getType().name();
-        if (type.endsWith("_HELMET")) p.getInventory().setHelmet(i);
-        else if (type.endsWith("_CHESTPLATE")) p.getInventory().setChestplate(i);
-        else if (type.endsWith("_LEGGINGS")) p.getInventory().setLeggings(i);
-        else if (type.endsWith("_BOOTS")) p.getInventory().setBoots(i);
-        else p.getInventory().addItem(i);
-    }
-
-    private void lanzarFuego(Player p) {
-        Firework fw = p.getWorld().spawn(p.getLocation(), Firework.class);
-        FireworkMeta fm = fw.getFireworkMeta();
-        fm.addEffect(FireworkEffect.builder().withColor(Color.AQUA, Color.WHITE).withFade(Color.BLUE).with(FireworkEffect.Type.BALL_LARGE).trail(true).build());
-        fm.setPower(1);
-        fw.setFireworkMeta(fm);
-    }
-
-    // --- MÉTODOS DE SOPORTE (GUI Y FILES) ---
-    public void abrirMenuKits(Player p) {
-        String cat = categoriaActual.getOrDefault(p.getUniqueId(), "GRATIS");
-        Inventory inv = Bukkit.createInventory(null, 54, c("&8Kits: &1" + cat));
-        inv.setItem(49, createItem(Material.NETHER_STAR, "&eCategoría Actual: " + cat, true, "&7Haz click para cambiar de categoría."));
-        
-        File[] files = new File(getDataFolder(), "kits").listFiles();
-        if (files != null) {
-            for (File f : files) {
-                FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
-                if (cf.getBoolean("premium") == cat.equals("PREMIUM") && cf.getBoolean("enabled")) {
-                    String n = f.getName().replace(".yml", "");
-                    inv.addItem(createItem(Material.valueOf(cf.getString("icono", "CHEST")), "&6Kit: &f" + n, false, "&7Click para reclamar."));
-                }
-            }
-        }
-        p.openInventory(inv);
-    }
-
-    public void abrirPanelAdmin(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 54, c("&4&lPANEL ADMINISTRATIVO"));
-        File[] files = new File(getDataFolder(), "kits").listFiles();
-        if (files != null) {
-            for (File f : files) {
-                inv.addItem(createItem(Material.PAPER, "&eEditar: &f" + f.getName().replace(".yml", ""), false, "&7Configura este kit."));
-            }
-        }
-        p.openInventory(inv);
-    }
-
-    private void abrirEditorItems(Player p, String k) {
-        Inventory inv = Bukkit.createInventory(null, 54, c("&0Editando Items: " + k));
-        List<?> items = getKitConfig(k).getList("items");
-        if (items != null) {
-            for (Object i : items) if (i instanceof ItemStack) inv.addItem((ItemStack) i);
-        }
-        for (int i = 45; i < 54; i++) inv.setItem(i, createItem(Material.LIME_STAINED_GLASS_PANE, "&a&lGUARDAR", true));
-        p.openInventory(inv);
-    }
-
-    private void guardarItemsEditor(Inventory inv, String k) {
-        FileConfiguration cf = getKitConfig(k);
-        List<ItemStack> list = new ArrayList<>();
-        for (int i = 0; i < 45; i++) {
-            if (inv.getItem(i) != null) list.add(inv.getItem(i));
-        }
-        cf.set("items", list);
-        guardarKit(k, cf);
-    }
-
-    private void crearKitBase(String n, boolean p) {
-        FileConfiguration cf = new YamlConfiguration();
-        cf.set("premium", p);
-        List<ItemStack> items = new ArrayList<>();
-        items.add(new ItemStack(p ? Material.DIAMOND_SWORD : Material.STONE_SWORD));
-        cf.set("items", items);
-        cf.set("precio", 0.0);
-        cf.set("cooldown", 3600);
-        cf.set("icono", p ? "DIAMOND_SWORD" : "STONE_SWORD");
-        cf.set("mensaje", "&a¡Has recibido tu kit!");
-        cf.set("permiso", p ? "akits.premium" : "akits.user");
-        cf.set("enabled", true);
-        cf.set("comando", "none");
-        cf.set("auto-equip", false);
-        cf.set("efectos", true);
-        guardarKit(n, cf);
+        }, 25L);
     }
 
     public FileConfiguration getKitConfig(String n) {
@@ -404,27 +99,264 @@ public class Principal extends JavaPlugin implements Listener {
         return f.exists() ? YamlConfiguration.loadConfiguration(f) : null;
     }
 
-    public void guardarKit(String n, FileConfiguration cf) {
-        try { cf.save(new File(getDataFolder() + "/kits", n + ".yml")); } catch (IOException e) {}
+    public void guardarKit(String n, FileConfiguration conf) {
+        try { conf.save(new File(getDataFolder() + "/kits", n + ".yml")); } catch (IOException e) { e.printStackTrace(); }
+    }
+
+    public class KitsCommand implements CommandExecutor {
+        @Override
+        public boolean onCommand(CommandSender s, Command cmd, String l, String[] a) {
+            if (!(s instanceof Player)) return true;
+            Player p = (Player) s;
+
+            if (a.length == 0) {
+                categoriaActual.putIfAbsent(p.getUniqueId(), "GRATIS");
+                abrirMenuKits(p);
+                return true;
+            }
+
+            if (a[0].equalsIgnoreCase("admin")) {
+                if (p.hasPermission("kitsadvanced.admin")) abrirPanelAdmin(p);
+                else p.sendMessage(c(getPrefix() + "&cNo tienes permiso."));
+                return true;
+            }
+
+            if (a[0].equalsIgnoreCase("reload")) {
+                if (p.hasPermission("kitsadvanced.admin")) {
+                    reloadConfig();
+                    p.sendMessage(c(getPrefix() + msg("&aÂ¡ConfiguraciÃ³n recargada!", "&aÂ¡Reloaded!")));
+                } else p.sendMessage(c(getPrefix() + "&cNo tienes permiso."));
+                return true;
+            }
+
+            p.sendMessage(c("&b&l" + getPrefix()));
+            p.sendMessage(c("&7/akits &8- &fAbrir menÃº de kits."));
+            if (p.hasPermission("kitsadvanced.admin")) {
+                p.sendMessage(c("&7/akits admin &8- &fPanel de administraciÃ³n."));
+                p.sendMessage(c("&7/akits reload &8- &fRecargar configuraciÃ³n."));
+            }
+            return true;
+        }
+    }
+
+    public void abrirMenuKits(Player p) {
+        String cat = categoriaActual.getOrDefault(p.getUniqueId(), "GRATIS");
+        String title = msg("&8&lKITS &7- ", "&8&lKITS &7- ") + (cat.equals("GRATIS") ? c("&fGRATIS") : c("&bPREMIUM"));
+        Inventory inv = Bukkit.createInventory(null, 54, title);
+        ItemStack vid = createItem(Material.WHITE_STAINED_GLASS_PANE, " ", false);
+        for (int i = 0; i < 54; i++) if (i < 9 || i > 44 || i % 9 == 0 || (i + 1) % 9 == 0) inv.setItem(i, vid);
+        inv.setItem(49, createItem(Material.NETHER_STAR, msg("&e&lCATEGORÃA", "&e&lCATEGORY"), true, msg("&7Viendo: &f", "&7Viewing: &f") + cat));
+
+        File folder = new File(getDataFolder(), "kits");
+        File[] archivos = folder.listFiles((dir, name) -> name.endsWith(".yml"));
+        if (archivos != null) {
+            for (File f : archivos) {
+                String nombre = f.getName().replace(".yml", "");
+                FileConfiguration conf = getKitConfig(nombre);
+                if (conf != null && conf.getBoolean("requiere-permiso") == cat.equals("PREMIUM")) {
+                    inv.addItem(createItem(Material.getMaterial(conf.getString("icono", "STONE_SWORD")), "&a&lKit: &f" + nombre, false, 
+                        msg("&7Precio: &a$", "&7Price: &a$") + conf.getDouble("precio"), 
+                        msg("&7Cooldown: &b", "&7Cooldown: &b") + formatTime(conf.getInt("cooldown"))));
+                }
+            }
+        }
+        p.openInventory(inv);
+    }
+
+    public void abrirPanelAdmin(Player p) {
+        Inventory inv = Bukkit.createInventory(null, 54, c(msg("&0&lADMIN &8- Panel Principal", "&0&lADMIN &8- Main Panel")));
+        inv.setItem(4, createItem(Material.NETHER_STAR, msg("&b&l[+] CREAR KIT", "&b&l[+] CREATE KIT"), true));
+        File folder = new File(getDataFolder(), "kits");
+        File[] archivos = folder.listFiles((dir, name) -> name.endsWith(".yml"));
+        if (archivos != null) {
+            int slot = 9;
+            for (File f : archivos) {
+                if (slot > 44) break;
+                inv.setItem(slot++, createItem(Material.PAPER, msg("&e&lEDITAR: &f", "&e&lEDIT: &f") + f.getName().replace(".yml", ""), false));
+            }
+        }
+        p.openInventory(inv);
+    }
+
+    public void abrirOpcionesKit(Player p, String k) {
+        editandoKit.put(p.getUniqueId(), k);
+        FileConfiguration cf = getKitConfig(k);
+        Inventory inv = Bukkit.createInventory(null, 54, c(msg("&0&lAJUSTES: &8", "&0&lSETTINGS: &8") + k));
+        for (int i = 0; i < 54; i++) inv.setItem(i, createItem(Material.GRAY_STAINED_GLASS_PANE, " ", false));
+        inv.setItem(10, createItem(Material.CHEST, msg("&6&l1. ITEMS", "&6&l1. ITEMS"), false));
+        inv.setItem(11, createItem(Material.SUNFLOWER, msg("&e&l2. PRECIO", "&e&l2. PRICE"), cf.getDouble("precio") > 0, "&7$" + cf.getDouble("precio")));
+        inv.setItem(12, createItem(Material.CLOCK, msg("&b&l3. COOLDOWN", "&b&l3. COOLDOWN"), cf.getInt("cooldown") > 0, "&7" + formatTime(cf.getInt("cooldown"))));
+        inv.setItem(13, createItem(Material.REDSTONE, msg("&d&l4. CATEGORÃA", "&d&l4. CATEGORY"), cf.getBoolean("requiere-permiso"), "Premium: " + cf.getBoolean("requiere-permiso")));
+        inv.setItem(14, createItem(Material.IRON_CHESTPLATE, msg("&f&l5. AUTO-EQUIP", "&f&l5. AUTO-EQUIP"), cf.getBoolean("auto-equip"), "Status: " + cf.getBoolean("auto-equip")));
+        inv.setItem(15, createItem(Material.getMaterial(cf.getString("icono", "STONE_SWORD")), msg("&6&l6. ICONO", "&6&l6. ICON"), true));
+        inv.setItem(16, createItem(Material.NAME_TAG, msg("&3&l7. PERMISO", "&3&l7. PERMISSION"), !cf.getString("permiso").equals("none"), "Perm: " + cf.getString("permiso")));
+        inv.setItem(19, createItem(Material.COMMAND_BLOCK, msg("&5&l8. COMANDO", "&5&l8. COMMAND"), !cf.getString("comando-consola").equals("none"), "Cmd: " + cf.getString("comando-consola")));
+        inv.setItem(21, createItem(Material.PAPER, msg("&a&l9. ANUNCIO", "&a&l9. ANNOUNCE"), cf.getBoolean("anuncio")));
+        inv.setItem(25, createItem(Material.BARRIER, msg("&4&lELIMINAR", "&4&lDELETE"), false));
+        inv.setItem(49, createItem(Material.ARROW, msg("&cÂ« VOLVER", "&cÂ« BACK"), false));
+        p.openInventory(inv);
+    }
+
+    @EventHandler
+    public void alHacerClick(InventoryClickEvent e) {
+        if (e.getClickedInventory() == null || e.getCurrentItem() == null) return;
+        Player p = (Player) e.getWhoClicked();
+        String t = ChatColor.stripColor(e.getView().getTitle());
+        String k = editandoKit.get(p.getUniqueId());
+
+        if (t.contains("AJUSTES") || t.contains("SETTINGS")) {
+            e.setCancelled(true);
+            FileConfiguration cf = getKitConfig(k);
+            switch (e.getRawSlot()) {
+                case 10: abrirCofreEditor(p, k); break;
+                case 11: p.closeInventory(); modoChat.put(p.getUniqueId(), "PRECIO"); p.sendMessage(c(getPrefix() + msg("&eEscribe el precio:", "&eType the price:"))); break;
+                case 12: p.closeInventory(); modoChat.put(p.getUniqueId(), "COOLDOWN"); p.sendMessage(c(getPrefix() + msg("&bEscribe segundos:", "&bType seconds:"))); break;
+                case 13: cf.set("requiere-permiso", !cf.getBoolean("requiere-permiso")); guardarKit(k, cf); abrirOpcionesKit(p, k); break;
+                case 14: cf.set("auto-equip", !cf.getBoolean("auto-equip")); guardarKit(k, cf); abrirOpcionesKit(p, k); break;
+                case 15: 
+                    if (p.getInventory().getItemInMainHand().getType() != Material.AIR) {
+                        cf.set("icono", p.getInventory().getItemInMainHand().getType().name());
+                        guardarKit(k, cf); p.sendMessage(c(getPrefix() + msg("&aÂ¡Icono cambiado!", "&aÂ¡Icon changed!")));
+                    } abrirOpcionesKit(p, k); break;
+                case 16: p.closeInventory(); modoChat.put(p.getUniqueId(), "PERMISO"); p.sendMessage(c(getPrefix() + msg("&3Escribe el permiso (o 'none'):", "&3Type permission (or 'none'):"))); break;
+                case 19: p.closeInventory(); modoChat.put(p.getUniqueId(), "COMANDO"); p.sendMessage(c(getPrefix() + msg("&5Escribe comando (sin /):", "&5Type command (no /):"))); break;
+                case 21: cf.set("anuncio", !cf.getBoolean("anuncio")); guardarKit(k, cf); abrirOpcionesKit(p, k); break;
+                case 25: new File(getDataFolder() + "/kits", k + ".yml").delete(); abrirPanelAdmin(p); break;
+                case 49: abrirPanelAdmin(p); break;
+            }
+        } else if (t.contains("ADMIN")) {
+            e.setCancelled(true);
+            if (e.getRawSlot() == 4) { p.closeInventory(); modoChat.put(p.getUniqueId(), "CREAR"); p.sendMessage(c(getPrefix() + msg("&bNombre del kit:", "&bKit name:"))); }
+            else if (e.getCurrentItem().getType() == Material.PAPER) {
+                String kitName = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("EDITAR: ", "").replace("EDIT: ", "");
+                abrirOpcionesKit(p, kitName);
+            }
+        } else if (t.contains("KITS -")) {
+            e.setCancelled(true);
+            if (e.getRawSlot() == 49) { categoriaActual.put(p.getUniqueId(), categoriaActual.get(p.getUniqueId()).equals("GRATIS") ? "PREMIUM" : "GRATIS"); abrirMenuKits(p); }
+            else if (e.getRawSlot() < 45) darKit(p, ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Kit: ", ""));
+        } else if (t.contains("Items")) {
+            if (e.getRawSlot() >= 36) { e.setCancelled(true); if (e.getRawSlot() <= 43) { guardarItemsEditor(e.getInventory(), k); abrirOpcionesKit(p, k); } else if (e.getRawSlot() == 44) abrirOpcionesKit(p, k); }
+        }
+    }
+
+    private void darKit(Player p, String k) {
+        FileConfiguration cf = getKitConfig(k);
+        if (cf == null) return;
+
+        // --- VERIFICACIÃN DE PERMISO ---
+        String perm = cf.getString("permiso", "none");
+        if (!perm.equalsIgnoreCase("none") && !p.hasPermission(perm)) {
+            p.sendMessage(c(getPrefix() + msg("&cNo tienes permiso para este kit.", "&cNo permission.")));
+            return;
+        }
+
+        File userFile = new File(getDataFolder() + "/userdata", p.getUniqueId() + ".yml");
+        FileConfiguration userConf = YamlConfiguration.loadConfiguration(userFile);
+        long cd = (userConf.getLong("cd." + k, 0) + (cf.getInt("cooldown") * 1000L)) - System.currentTimeMillis();
+        
+        if (cd > 0) { p.sendMessage(c(getPrefix() + msg("&cEspera ", "&cWait ") + formatTimeRemaining(cd))); return; }
+        if (cf.getDouble("precio") > 0 && econ != null) {
+            if (econ.getBalance(p) < cf.getDouble("precio")) { p.sendMessage(c(getPrefix() + msg("&cNo tienes dinero.", "&cNo money."))); return; }
+            econ.withdrawPlayer(p, cf.getDouble("precio"));
+        }
+
+        List<?> items = cf.getList("items");
+        if (items != null) {
+            for (Object o : items) {
+                if (!(o instanceof ItemStack)) continue;
+                ItemStack item = (ItemStack) o;
+                if (cf.getBoolean("auto-equip")) {
+                    String type = item.getType().name();
+                    if (type.endsWith("_HELMET")) p.getInventory().setHelmet(item);
+                    else if (type.endsWith("_CHESTPLATE")) p.getInventory().setChestplate(item);
+                    else if (type.endsWith("_LEGGINGS")) p.getInventory().setLeggings(item);
+                    else if (type.endsWith("_BOOTS")) p.getInventory().setBoots(item);
+                    else p.getInventory().addItem(item);
+                } else p.getInventory().addItem(item);
+            }
+            if (cf.getBoolean("requiere-permiso")) lanzarFuegoArtificial(p);
+            if (cf.getBoolean("anuncio")) Bukkit.broadcastMessage(c(getPrefix() + msg("&e" + p.getName() + " &fha usado el kit &b" + k, "&e" + p.getName() + " &fused kit &b" + k)));
+            String cmd = cf.getString("comando-consola", "none");
+            if (!cmd.equals("none")) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd.replace("{player}", p.getName()));
+            userConf.set("cd." + k, System.currentTimeMillis());
+            try { userConf.save(userFile); } catch (IOException e) {}
+            p.sendMessage(c(getPrefix() + msg("&aÂ¡Kit recibido!", "&aÂ¡Kit received!")));
+        }
+    }
+
+    private void lanzarFuegoArtificial(Player p) {
+        Firework fw = p.getWorld().spawn(p.getLocation(), Firework.class);
+        FireworkMeta fm = fw.getFireworkMeta();
+        fm.addEffect(FireworkEffect.builder().withColor(Color.AQUA, Color.WHITE).with(FireworkEffect.Type.BALL_LARGE).build());
+        fm.setPower(1); fw.setFireworkMeta(fm);
+    }
+
+    @EventHandler
+    public void alChat(AsyncPlayerChatEvent e) {
+        Player p = e.getPlayer();
+        if (!modoChat.containsKey(p.getUniqueId())) return;
+        e.setCancelled(true);
+        String msgInput = e.getMessage().trim();
+        
+        Bukkit.getScheduler().runTask(this, () -> {
+            String modo = modoChat.get(p.getUniqueId());
+            String k = editandoKit.get(p.getUniqueId());
+            FileConfiguration cf = getKitConfig(k);
+            
+            try {
+                if (modo.equals("CREAR")) {
+                    crearKitBase(msgInput.replace(" ", "_"), false);
+                    abrirOpcionesKit(p, msgInput.replace(" ", "_"));
+                } else {
+                    if (modo.equals("PRECIO")) cf.set("precio", Double.parseDouble(msgInput));
+                    else if (modo.equals("COOLDOWN")) cf.set("cooldown", Integer.parseInt(msgInput));
+                    else if (modo.equals("PERMISO")) cf.set("permiso", msgInput);
+                    else if (modo.equals("COMANDO")) cf.set("comando-consola", msgInput);
+                    guardarKit(k, cf);
+                    abrirOpcionesKit(p, k);
+                }
+            } catch (Exception ex) {
+                p.sendMessage(c(getPrefix() + "&cÂ¡Error! Entrada no vÃ¡lida (Â¿pusiste letras en vez de nÃºmeros?)."));
+                if (!modo.equals("CREAR")) abrirOpcionesKit(p, k);
+            }
+            modoChat.remove(p.getUniqueId());
+        });
+    }
+
+    private void crearKitBase(String n, boolean esP) {
+        FileConfiguration c = new YamlConfiguration();
+        c.set("precio", 0.0); c.set("cooldown", 0); c.set("requiere-permiso", esP);
+        c.set("icono", "STONE_SWORD"); c.set("permiso", "none"); c.set("comando-consola", "none");
+        c.set("auto-equip", false); c.set("anuncio", false); c.set("items", new ArrayList<ItemStack>());
+        guardarKit(n, c);
+    }
+
+    private String formatTime(int s) { return s <= 0 ? msg("Sin CD", "No CD") : (s / 60) + "m"; }
+    private String formatTimeRemaining(long ms) { return ((ms / 1000) / 60) + "m " + ((ms / 1000) % 60) + "s"; }
+
+    private void abrirCofreEditor(Player p, String k) {
+        Inventory ed = Bukkit.createInventory(null, 45, c(msg("&0Items de: ", "&0Items of: ") + k));
+        FileConfiguration cf = getKitConfig(k);
+        List<?> items = cf.getList("items");
+        if (items != null) for (Object i : items) if (i instanceof ItemStack) ed.addItem((ItemStack) i);
+        for (int i = 36; i < 44; i++) ed.setItem(i, createItem(Material.LIME_STAINED_GLASS_PANE, msg("&a&lGUARDAR", "&a&lSAVE"), true));
+        ed.setItem(44, createItem(Material.ARROW, msg("&cVOLVER", "&cBACK"), false));
+        p.openInventory(ed);
+    }
+
+    private void guardarItemsEditor(Inventory inv, String k) {
+        FileConfiguration cf = getKitConfig(k);
+        List<ItemStack> list = new ArrayList<>();
+        for (int i = 0; i < 36; i++) { ItemStack item = inv.getItem(i); if (item != null && item.getType() != Material.AIR) list.add(item); }
+        cf.set("items", list); guardarKit(k, cf);
     }
 
     private ItemStack createItem(Material m, String n, boolean glint, String... lore) {
         ItemStack i = new ItemStack(m); ItemMeta mt = i.getItemMeta();
-        mt.setDisplayName(c(n));
-        if (lore.length > 0) mt.setLore(Arrays.stream(lore).map(this::c).collect(Collectors.toList()));
-        if (glint) { mt.addEnchant(Enchantment.DURABILITY, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
+        mt.setDisplayName(c(n)); List<String> l = new ArrayList<>();
+        for (String s : lore) l.add(c(s)); mt.setLore(l);
+        if (glint) { mt.addEnchant(Enchantment.PROTECTION, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
         i.setItemMeta(mt); return i;
-    }
-
-    public class KitPlaceholders extends PlaceholderExpansion {
-        private Principal pl; public KitPlaceholders(Principal pl) { this.pl = pl; }
-        @Override public String getIdentifier() { return "akits"; }
-        @Override public String getAuthor() { return "Adrian"; }
-        @Override public String getVersion() { return "1.0"; }
-        @Override public boolean persist() { return true; }
-        @Override public String onPlaceholderRequest(Player p, String id) { 
-            if (id.equals("total")) return String.valueOf(new File(getDataFolder(), "kits").listFiles().length);
-            return null;
-        }
     }
 }

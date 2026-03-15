@@ -1,26 +1,26 @@
 # ============================================
-#       KitsAdvanced - Creado por Adrian
+#       KitsAdvanced - Sistema de Mensajes
 # ============================================
 
-# El prefijo que aparecerá antes de cada mensaje
 prefix: "&8[&bKitsAdvanced&8] &7» "
 
-# Mensajes personalizables (usa & para colores)
 messages:
-  no-permission: "&cNo tienes permiso para usar este comando."
-  reload: "&a¡Configuración recargada correctamente!"
-  kit-received: "&eHas recibido el kit: &b%kit%"
+  # Mensajes de Creación y Errores
+  kit-created: "&a&l¡ÉXITO! &eEl kit &b%kit% &eha sido creado correctamente."
+  kit-exists: "&c&lERROR: &7Ya existe un kit llamado &f%kit%&7. Usa otro nombre."
+  kit-not-found: "&c&lERROR: &7No se encontró ningún kit con el nombre &f%kit%&7."
+  kit-deleted: "&6&lAVISO: &eEl kit &f%kit% &eha sido eliminado para siempre."
+  
+  # Mensajes de Uso
+  kit-received: "&b&lKITS &8| &eHas recibido el kit &f%kit%&e. ¡Disfrútalo!"
+  no-permission: "&4&l¡VAYA! &cNo tienes los permisos necesarios para esto."
+  reload: "&a&lRECARGA: &7La configuración ha sido actualizada sin lag."
 
-# Configuración del menú principal
+# Configuración técnica
 settings:
   inventory-name: "&0&lPanel de Kits"
   inventory-slots: 27
-  close-on-select: true
+  sound-on-receive: "ENTITY_PLAYER_LEVELUP"
 
-# Aquí se guardarán los kits que crees
-kits:
-  default:
-    display-name: "&fKit Inicial"
-    item: "STONE_SWORD"
-    lore:
-      - "&7Un kit básico para empezar."
+# Lista de Kits (se irán guardando aquí)
+kits: {}

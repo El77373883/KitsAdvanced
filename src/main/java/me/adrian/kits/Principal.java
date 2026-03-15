@@ -1,91 +1,173 @@
 package me.adrian.kits;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.ChatColor;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
+import org.bukkit.*;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.command.*;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.*;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.ItemFlag;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.plugin.java.JavaPlugin;
-
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 public class Principal extends JavaPlugin implements Listener {
-
     private final Map<UUID, String> editandoKit = new HashMap<>();
-    private final Map<UUID, String> esperandoNombre = new HashMap<>();
-    private final Map<UUID, String> esperandoTiempo = new HashMap<>();
+    private final Map<UUID, String> modoChat = new HashMap<>();
 
     @Override
     public void onEnable() {
-        saveDefaultConfig();
+        // Esto crea la carpeta del plugin y la subcarpeta /kits al instalarse
+        if (!getDataFolder().exists()) getDataFolder().mkdir();
+        File carpetaKits = new File(getDataFolder(), "kits");
+        if (!carpetaKits.exists()) carpetaKits.mkdirs();
+
         Bukkit.getPluginManager().registerEvents(this, this);
         getCommand("akits").setExecutor(new KitsCommand());
+        
+        getLogger().info("¡Plugin de Kits cargado correctamente! Carpeta /kits lista.");
     }
 
-    private String getMsg(String ruta) {
-        String lang = getConfig().getString("idioma", "es");
-        String prefix = getConfig().getString("mensajes." + lang + ".prefix", "");
-        String mensaje = getConfig().getString("mensajes." + lang + "." + ruta, "");
-        return color(prefix + mensaje);
+    private String c(String s) { return ChatColor.translateAlternateColorCodes('&', s); }
+
+    // --- SISTEMA DE PERSISTENCIA (No se borra al reiniciar) ---
+    public FileConfiguration getKitConfig(String nombre) {
+        File file = new File(getDataFolder() + "/kits", nombre + ".yml");
+        return YamlConfiguration.loadConfiguration(file);
+    }
+
+    public void guardarKit(String nombre, FileConfiguration config) {
+        try {
+            config.save(new File(getDataFolder() + "/kits", nombre + ".yml"));
+        } catch (IOException e) { e.printStackTrace(); }
     }
 
     public class KitsCommand implements CommandExecutor {
         @Override
         public boolean onCommand(CommandSender s, Command c, String l, String[] a) {
-            if (!(s instanceof Player)) return true;
-            Player p = (Player) s;
-            if (a.length == 0) { abrirMenuKits(p); return true; }
-            if (p.hasPermission("kitsadvanced.admin")) {
-                if (a[0].equalsIgnoreCase("create") && a.length > 1) {
-                    crearNuevoKit(a[1].toLowerCase());
-                    p.sendMessage(getMsg("kit-created").replace("%kit%", a[1]));
+            if (!(s instanceof Player)) {
+                if (a.length > 0 && a[0].equalsIgnoreCase("reload")) {
+                    s.sendMessage(c("&a&l[!] &fConfiguraciones de kits recargadas desde los archivos .yml"));
                     return true;
                 }
-                if (a[0].equalsIgnoreCase("panel")) { abrirPanelAdmin(p); return true; }
-                if (a[0].equalsIgnoreCase("reload")) { reloadConfig(); p.sendMessage(getMsg("reload")); return true; }
+                return true;
+            }
+            Player p = (Player) s;
+
+            if (a.length == 0) { abrirMenuKits(p); return true; }
+
+            if (!p.hasPermission("kitsadvanced.admin")) {
+                p.sendMessage(c("&cNo tienes permiso para esto."));
+                return true;
+            }
+
+            if (a[0].equalsIgnoreCase("reload")) {
+                p.sendMessage(c("&a&l✔ &fArchivos de la carpeta /kits recargados con éxito."));
+                p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 1);
+                return true;
+            }
+
+            if (a[0].equalsIgnoreCase("panel")) { abrirPanelAdmin(p); return true; }
+
+            if (a[0].equalsIgnoreCase("edit") && a.length > 1) {
+                File file = new File(getDataFolder() + "/kits", a[1] + ".yml");
+                if (file.exists()) abrirOpcionesKit(p, a[1]);
+                else p.sendMessage(c("&cEl archivo &7" + a[1] + ".yml &cno existe."));
+                return true;
             }
             return true;
         }
     }
 
     public void abrirMenuKits(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 54, color("&0&lMenú de Kits"));
-        ConfigurationSection sec = getConfig().getConfigurationSection("kits");
-        if ((sec == null || sec.getKeys(false).isEmpty()) && p.hasPermission("kitsadvanced.admin")) {
-            inv.setItem(22, createItem(Material.CHEST, "&b&l¡CREA TU PRIMER KIT!", false, "&7No hay kits.", "&eClick para abrir el panel."));
-        } else if (sec != null) {
-            for (String k : sec.getKeys(false)) {
-                boolean pre = getConfig().getBoolean("kits." + k + ".requiere-permiso");
-                inv.addItem(createItem(pre ? Material.NETHER_STAR : Material.CHEST, (pre ? "&6&l" : "&a&l") + k, pre, 
-                    "&7Estado: " + (pre ? "&6Premium" : "&aGratis"), p.hasPermission("kitsadvanced.admin") ? "&e(Click para editar)" : "&7Click para reclamar."));
+        Inventory inv = Bukkit.createInventory(null, 54, c("&0&lMENÚ DE KITS"));
+        File carpeta = new File(getDataFolder(), "kits");
+        File[] archivos = carpeta.listFiles((dir, name) -> name.endsWith(".yml"));
+
+        if (archivos != null) {
+            List<String> normales = new ArrayList<>();
+            List<String> premium = new ArrayList<>();
+            for (File f : archivos) {
+                String nombre = f.getName().replace(".yml", "");
+                FileConfiguration conf = getKitConfig(nombre);
+                if (conf.getBoolean("requiere-permiso")) premium.add(nombre);
+                else normales.add(nombre);
+            }
+
+            for (String k : normales) inv.addItem(createKitIcon(k));
+
+            // Fila de separación con el Bloque de Diamante
+            for (int i = 27; i <= 35; i++) inv.setItem(i, createItem(Material.GRAY_STAINED_GLASS_PANE, " ", false));
+            inv.setItem(31, createItem(Material.DIAMOND_BLOCK, "&6&lKITS PREMIUM", true, "&7Estos kits requieren permisos especiales."));
+
+            int slotPre = 36;
+            for (String k : premium) {
+                if (slotPre < 54) { inv.setItem(slotPre, createKitIcon(k)); slotPre++; }
             }
         }
-        if (p.hasPermission("kitsadvanced.admin")) inv.setItem(49, createItem(Material.DIAMOND, "&b&lPANEL DE ADMIN", true, "&7Configuración total."));
+        p.openInventory(inv);
+        p.playSound(p.getLocation(), Sound.BLOCK_CHEST_OPEN, 1, 1);
+    }
+
+    private ItemStack createKitIcon(String nombreKit) {
+        FileConfiguration conf = getKitConfig(nombreKit);
+        Material icono = Material.valueOf(conf.getString("icono", "CHEST"));
+        
+        List<String> lore = new ArrayList<>();
+        lore.add(c("&8&m-------------------"));
+        lore.add(c("&6&lCONTENIDO:"));
+        
+        List<?> items = conf.getList("items");
+        if (items != null && !items.isEmpty()) {
+            for (int i = 0; i < Math.min(items.size(), 5); i++) {
+                ItemStack it = (ItemStack) items.get(i);
+                if (it == null) continue;
+                String name = (it.hasItemMeta() && it.getItemMeta().hasDisplayName()) 
+                    ? it.getItemMeta().getDisplayName() : "&f" + it.getType().name().toLowerCase().replace("_", " ");
+                lore.add(c(" &7• &f" + it.getAmount() + "x " + name));
+            }
+            if (items.size() > 5) lore.add(c(" &8y más..."));
+        } else {
+            lore.add(c(" &c(Sin items configurados)"));
+        }
+
+        lore.add(c("&8&m-------------------"));
+        lore.add(c("&7Precio: &a$" + conf.getDouble("precio", 0.0)));
+        lore.add(c("&e▶ Click para reclamar"));
+
+        return createItem(icono, "&e&lKit: &f" + nombreKit, conf.getBoolean("requiere-permiso"), lore.toArray(new String[0]));
+    }
+
+    public void abrirPanelAdmin(Player p) {
+        Inventory inv = Bukkit.createInventory(null, 54, c("&0Gestión de Kits (.yml)"));
+        inv.setItem(4, createItem(Material.NETHER_STAR, "&b&l[+] CREAR NUEVO KIT", true, "&7Se creará un archivo .yml nuevo."));
+        
+        File carpeta = new File(getDataFolder(), "kits");
+        File[] archivos = carpeta.listFiles((dir, name) -> name.endsWith(".yml"));
+        if (archivos != null) {
+            for (File f : archivos) {
+                inv.addItem(createItem(Material.PAPER, "&eArchivo: &f" + f.getName(), false, "&7Click: &aEditar", "&cQ: &7Eliminar archivo"));
+            }
+        }
         p.openInventory(inv);
     }
 
     public void abrirOpcionesKit(Player p, String k) {
         editandoKit.put(p.getUniqueId(), k);
-        Inventory inv = Bukkit.createInventory(null, 27, color("&0Configurando: " + k));
-        inv.setItem(10, createItem(Material.CHEST, "&6&lÍTEMS", false, "&7Click para editar contenido."));
-        boolean pre = getConfig().getBoolean("kits." + k + ".requiere-permiso");
-        inv.setItem(12, createItem(pre ? Material.LIME_WOOL : Material.RED_WOOL, "&eESTADO: " + (pre ? "&6PREMIUM" : "&aGRATIS"), pre, "&7Click para cambiar."));
-        inv.setItem(14, createItem(Material.CLOCK, "&b&lTIEMPO", false, "&7Actual: " + getConfig().getLong("kits." + k + ".tiempo") + " min"));
-        inv.setItem(16, createItem(Material.NAME_TAG, "&d&lCAMBIAR NOMBRE", false, "&7Actual: " + k));
+        FileConfiguration conf = getKitConfig(k);
+        Inventory inv = Bukkit.createInventory(null, 45, c("&0Ajustes: &8" + k));
+        
+        boolean pre = conf.getBoolean("requiere-permiso");
+        inv.setItem(11, createItem(Material.BEACON, "&e&lEstado Premium", pre, "&7¿Requiere permiso?: " + (pre ? "&aSÍ" : "&cNO")));
+        inv.setItem(13, createItem(Material.CHEST, "&6&lContenido del Kit", false, "&7Haz click para meter los items."));
+        inv.setItem(15, createItem(Material.SUNFLOWER, "&e&lPrecio", false, "&7Costo actual: &a$" + conf.getDouble("precio")));
+        
+        inv.setItem(40, createItem(Material.ARROW, "&c« Volver al Panel", false));
         p.openInventory(inv);
     }
 
@@ -94,115 +176,101 @@ public class Principal extends JavaPlugin implements Listener {
         if (e.getClickedInventory() == null || e.getCurrentItem() == null) return;
         Player p = (Player) e.getWhoClicked();
         String t = ChatColor.stripColor(e.getView().getTitle());
-        if (t.equals("Menú de Kits")) {
+        String k = editandoKit.get(p.getUniqueId());
+
+        if (t.equals("MENÚ DE KITS")) {
             e.setCancelled(true);
-            if (e.getRawSlot() == 22 || e.getRawSlot() == 49) { abrirPanelAdmin(p); return; }
-            String k = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName());
-            if (p.hasPermission("kitsadvanced.admin")) abrirOpcionesKit(p, k); else darKit(p, k);
-        }
-        if (t.startsWith("Configurando: ")) {
-            e.setCancelled(true);
-            String k = editandoKit.get(p.getUniqueId());
-            if (e.getRawSlot() == 10) abrirCofreEditor(p, k);
-            if (e.getRawSlot() == 12) {
-                getConfig().set("kits." + k + ".requiere-permiso", !getConfig().getBoolean("kits." + k + ".requiere-permiso"));
-                saveConfig(); abrirOpcionesKit(p, k);
+            if (e.getRawSlot() != 31 && e.getCurrentItem().getType() != Material.GRAY_STAINED_GLASS_PANE) {
+                darKit(p, ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Kit: ", ""));
             }
-            if (e.getRawSlot() == 14) { p.closeInventory(); esperandoTiempo.put(p.getUniqueId(), k); p.sendMessage(color("&bEscribe el tiempo en minutos:")); }
-            if (e.getRawSlot() == 16) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), k); p.sendMessage(color("&dEscribe el nuevo nombre:")); }
-        }
-        if (t.equals("Panel de Control")) {
+        } else if (t.equals("Gestión de Kits (.yml)")) {
             e.setCancelled(true);
-            String k = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Kit: ", "");
-            abrirOpcionesKit(p, k);
+            if (e.getRawSlot() == 4) { 
+                p.closeInventory(); 
+                modoChat.put(p.getUniqueId(), "CREAR"); 
+                p.sendMessage(c("&b&l[+] &fEscribe el nombre del nuevo kit:")); 
+            } else if (e.getCurrentItem().getType() == Material.PAPER) {
+                String kitName = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Archivo: ", "").replace(".yml", "");
+                if (e.getClick() == ClickType.DROP) {
+                    new File(getDataFolder() + "/kits", kitName + ".yml").delete();
+                    abrirPanelAdmin(p);
+                } else abrirOpcionesKit(p, kitName);
+            }
+        } else if (t.startsWith("Ajustes:")) {
+            e.setCancelled(true);
+            FileConfiguration conf = getKitConfig(k);
+            if (e.getRawSlot() == 11) { 
+                conf.set("requiere-permiso", !conf.getBoolean("requiere-permiso")); 
+                guardarKit(k, conf); abrirOpcionesKit(p, k); 
+            }
+            if (e.getRawSlot() == 13) abrirCofreEditor(p, k);
+            if (e.getRawSlot() == 40) abrirPanelAdmin(p);
         }
     }
 
     @EventHandler
     public void alChat(AsyncPlayerChatEvent e) {
         Player p = e.getPlayer();
-        if (esperandoTiempo.containsKey(p.getUniqueId())) {
+        if (modoChat.containsKey(p.getUniqueId())) {
             e.setCancelled(true);
-            String k = esperandoTiempo.remove(p.getUniqueId());
-            try { getConfig().set("kits." + k + ".tiempo", Long.parseLong(e.getMessage())); saveConfig(); } catch (Exception ex) {}
-            Bukkit.getScheduler().runTask(this, () -> abrirOpcionesKit(p, k));
-        }
-        if (esperandoNombre.containsKey(p.getUniqueId())) {
-            e.setCancelled(true);
-            String viejo = esperandoNombre.remove(p.getUniqueId());
-            String nuevo = e.getMessage().toLowerCase();
-            ConfigurationSection sec = getConfig().getConfigurationSection("kits." + viejo);
-            if (sec != null) {
-                getConfig().set("kits." + nuevo, sec);
-                getConfig().set("kits." + viejo, null); 
-                saveConfig();
-            }
-            Bukkit.getScheduler().runTask(this, () -> abrirOpcionesKit(p, nuevo));
+            String msg = e.getMessage().replace(" ", "_");
+            Bukkit.getScheduler().runTask(this, () -> {
+                FileConfiguration conf = getKitConfig(msg);
+                conf.set("requiere-permiso", false);
+                conf.set("precio", 0.0);
+                conf.set("icono", "CHEST");
+                conf.set("items", new ArrayList<ItemStack>());
+                guardarKit(msg, conf);
+                modoChat.remove(p.getUniqueId());
+                abrirOpcionesKit(p, msg);
+            });
         }
     }
 
     private void darKit(Player p, String k) {
-        if (getConfig().getBoolean("kits." + k + ".requiere-permiso") && !p.hasPermission("advancedkits.kits." + k)) {
-            p.sendMessage(getMsg("no-permission")); return;
+        FileConfiguration conf = getKitConfig(k);
+        if (conf.getBoolean("requiere-permiso") && !p.hasPermission("kits.use." + k)) {
+            p.sendMessage(c("&c&l✘ &7No tienes permiso para el kit &f" + k));
+            return;
         }
-        long rest = (getConfig().getLong("usuarios." + p.getUniqueId() + "." + k, 0) + (getConfig().getLong("kits." + k + ".tiempo", 0) * 60000)) - System.currentTimeMillis();
-        if (rest > 0) { p.sendMessage(getMsg("wait").replace("%time%", (rest / 60000) + "m")); return; }
-        List<?> items = getConfig().getList("kits." + k + ".items");
+        List<?> items = conf.getList("items");
         if (items != null) {
-            for (Object i : items) if (i instanceof ItemStack) p.getInventory().addItem((ItemStack) i);
-            p.sendMessage(getMsg("kit-received").replace("%kit%", k));
-            getConfig().set("usuarios." + p.getUniqueId() + "." + k, System.currentTimeMillis()); saveConfig();
+            for (Object o : items) if (o instanceof ItemStack) p.getInventory().addItem((ItemStack) o);
+            p.sendMessage(c("&a&l✔ &7Kit &f" + k + " &7equipado con éxito."));
+            p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
         }
-    }
-
-    private void crearNuevoKit(String n) {
-        getConfig().set("kits." + n + ".requiere-permiso", false);
-        getConfig().set("kits." + n + ".tiempo", 0);
-        getConfig().set("kits." + n + ".items", new ArrayList<ItemStack>());
-        saveConfig();
-    }
-
-    public void abrirPanelAdmin(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 54, color("&0Panel de Control"));
-        ConfigurationSection sec = getConfig().getConfigurationSection("kits");
-        if (sec != null) for (String k : sec.getKeys(false)) inv.addItem(createItem(Material.CHEST, "&bKit: &f" + k, false, "&7Click para opciones."));
-        p.openInventory(inv);
     }
 
     private void abrirCofreEditor(Player p, String k) {
-        Inventory ed = Bukkit.createInventory(null, 36, color("&0Editor: " + k));
-        List<?> items = getConfig().getList("kits." + k + ".items");
-        if (items != null) for (Object i : items) if (i instanceof ItemStack) ed.addItem((ItemStack) i);
+        Inventory ed = Bukkit.createInventory(null, 36, c("&0Items de: " + k));
+        List<?> items = getKitConfig(k).getList("items");
+        if (items != null) {
+            for (Object i : items) if (i instanceof ItemStack) ed.addItem((ItemStack) i);
+        }
         p.openInventory(ed);
     }
 
     @EventHandler
     public void alCerrar(InventoryCloseEvent e) {
-        String title = ChatColor.stripColor(e.getView().getTitle());
-        if (title.startsWith("Editor: ")) {
-            String k = title.replace("Editor: ", "");
-            List<ItemStack> c = new ArrayList<>();
-            for (ItemStack i : e.getInventory().getContents()) if (i != null && i.getType() != Material.AIR) c.add(i);
-            getConfig().set("kits." + k + ".items", c); saveConfig();
+        if (ChatColor.stripColor(e.getView().getTitle()).startsWith("Items de: ")) {
+            String k = ChatColor.stripColor(e.getView().getTitle()).replace("Items de: ", "");
+            FileConfiguration conf = getKitConfig(k);
+            List<ItemStack> list = new ArrayList<>();
+            for (ItemStack i : e.getInventory().getContents()) if (i != null && i.getType() != Material.AIR) list.add(i);
+            conf.set("items", list);
+            guardarKit(k, conf);
         }
     }
 
-    private String color(String s) { return ChatColor.translateAlternateColorCodes('&', s); }
-
-    private ItemStack createItem(Material m, String n, boolean brillo, String... lore) {
+    private ItemStack createItem(Material m, String n, boolean glint, String... lore) {
         ItemStack i = new ItemStack(m);
         ItemMeta mt = i.getItemMeta();
         if (mt != null) {
-            mt.setDisplayName(color(n));
+            mt.setDisplayName(c(n));
             List<String> l = new ArrayList<>();
-            for (String str : lore) l.add(color(str));
+            for (String s : lore) l.add(c(s));
             mt.setLore(l);
-            if (brillo) {
-                // He cambiado Enchanment.PROTECTION_ENVIRONMENTAL por Enchantment.PROTECTION
-                // Esto es compatible con las versiones más recientes.
-                mt.addEnchant(Enchantment.PROTECTION, 1, true);
-                mt.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-            }
+            if (glint) { mt.addEnchant(Enchantment.DURABILITY, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
             i.setItemMeta(mt);
         }
         return i;

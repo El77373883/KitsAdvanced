@@ -71,7 +71,7 @@ public class Principal extends JavaPlugin implements Listener {
         p.openInventory(inv);
     }
 
-    // --- 3. EDITORES (ÍTEMS E ICONO) ---
+    // --- 3. EDITORES ---
     public void abrirEditorContenido(Player p, String id) {
         configurandoItems.put(p.getUniqueId(), id);
         Inventory inv = Bukkit.createInventory(null, 45, c("&8Items de: " + id));
@@ -91,7 +91,7 @@ public class Principal extends JavaPlugin implements Listener {
         p.openInventory(inv);
     }
 
-    // --- 4. PANEL DE AJUSTES ---
+    // --- 4. PANEL DE AJUSTES (CON TODO) ---
     public void abrirEditorKit(Player p, String id) {
         editandoKit.put(p.getUniqueId(), id);
         FileConfiguration cf = getKitConfig(id);
@@ -104,8 +104,10 @@ public class Principal extends JavaPlugin implements Listener {
         inv.setItem(15, createItem(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, (short) 0));
         inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, (short) 0));
         
-        boolean esPremium = cf.getBoolean("premium");
-        inv.setItem(19, createItem(esPremium ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, (short) 0, esPremium ? "&bPREMIUM" : "&aGRATIS"));
+        boolean esPre = cf.getBoolean("premium");
+        inv.setItem(19, createItem(esPre ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, (short) 0, esPre ? "&bPREMIUM" : "&aGRATIS"));
+        inv.setItem(21, createItem(Material.BARRIER, "&c&l10. ELIMINAR KIT", false, (short) 0));
+
         inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, (short) 0));
         p.openInventory(inv);
     }
@@ -160,7 +162,8 @@ public class Principal extends JavaPlugin implements Listener {
                 boolean b = !config.getBoolean("premium");
                 config.set("premium", b);
                 config.set("icono", b ? "DIAMOND_SWORD" : "STONE_SWORD");
-            } else if (slot == 49) { abrirMenuPrincipal(p); return; }
+            } else if (slot == 21) { f.delete(); p.closeInventory(); p.sendMessage(c("&cKit eliminado.")); return; }
+            else if (slot == 49) { abrirMenuPrincipal(p); return; }
             
             saveKit(f, config);
             abrirEditorKit(p, id);

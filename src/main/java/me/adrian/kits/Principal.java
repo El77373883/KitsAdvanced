@@ -35,8 +35,8 @@ public class Principal extends JavaPlugin implements Listener {
     public void onEnable() {
         setupEconomy();
         saveDefaultConfig();
-        new File(getDataFolder(), "kits").mkdirs();
-        new File(getDataFolder(), "data").mkdirs();
+        if (!new File(getDataFolder(), "kits").exists()) new File(getDataFolder(), "kits").mkdirs();
+        if (!new File(getDataFolder(), "data").exists()) new File(getDataFolder(), "data").mkdirs();
         cargarArchivosInternos();
         Bukkit.getPluginManager().registerEvents(this, this);
         getCommand("akits").setExecutor(new KitsCommand());
@@ -81,7 +81,9 @@ public class Principal extends JavaPlugin implements Listener {
     private boolean setupEconomy() {
         if (getServer().getPluginManager().getPlugin("Vault") == null) return false;
         RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
-        return rsp != null && (econ = rsp.getProvider()) != null;
+        if (rsp == null) return false;
+        econ = rsp.getProvider();
+        return econ != null;
     }
 
     public class KitsCommand implements CommandExecutor {
@@ -212,7 +214,9 @@ public class Principal extends JavaPlugin implements Listener {
             }
         }
         p.sendMessage(c(mensajes.getString("mensajes.recibido").replace("{kit}", kitName)));
-        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+        
+        // CORRECCIÓN: Usar un sonido genérico compatible
+        p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
     }
 
     private boolean esArmadura(Material m) {
@@ -241,7 +245,7 @@ public class Principal extends JavaPlugin implements Listener {
             return true;
         }
         data.set(kit, ahora);
-        try { data.save(f); } catch (IOException e) {}
+        try { data.save(f); } catch (IOException e) { e.printStackTrace(); }
         return false;
     }
 
@@ -253,10 +257,13 @@ public class Principal extends JavaPlugin implements Listener {
         File[] kits = folder.listFiles();
         if (kits != null) {
             for (File f : kits) {
+                if (!f.getName().endsWith(".yml")) continue;
                 String n = f.getName().replace(".yml", "");
                 FileConfiguration conf = YamlConfiguration.loadConfiguration(f);
                 if (conf.getBoolean("requiere-permiso") == cat.equals("PREMIUM")) {
-                    inv.addItem(createItem(Material.getMaterial(conf.getString("icono", "CHEST")), c("&bKit: " + n), false, "&7Precio: &a$" + conf.getDouble("precio")));
+                    Material icon = Material.getMaterial(conf.getString("icono", "CHEST"));
+                    if (icon == null) icon = Material.CHEST;
+                    inv.addItem(createItem(icon, c("&bKit: " + n), false, "&7Precio: &a$" + conf.getDouble("precio")));
                 }
             }
         }
@@ -278,7 +285,11 @@ public class Principal extends JavaPlugin implements Listener {
         File[] files = folder.listFiles();
         if (files != null) {
             int s = 9;
-            for (File f : files) if (s < 54) inv.setItem(s++, createItem(Material.PAPER, "&eEditar: " + f.getName().replace(".yml", ""), false));
+            for (File f : files) {
+                if (f.getName().endsWith(".yml") && s < 54) {
+                    inv.setItem(s++, createItem(Material.PAPER, "&eEditar: " + f.getName().replace(".yml", ""), false));
+                }
+            }
         }
         p.openInventory(inv);
     }
@@ -302,7 +313,7 @@ public class Principal extends JavaPlugin implements Listener {
         Inventory inv = Bukkit.createInventory(null, 45, c("&0Editando Items: " + k));
         FileConfiguration cf = getKitConfig(k);
         List<?> items = cf.getList("items");
-        if (items != null) { int s = 0; for (Object i : items) if (s < 36) inv.setItem(s++, (ItemStack) i); }
+        if (items != null) { int s = 0; for (Object i : items) if (s < 36 && i instanceof ItemStack) inv.setItem(s++, (ItemStack) i); }
         inv.setItem(40, createItem(Material.LIME_DYE, "&aGUARDAR", true));
         p.openInventory(inv);
     }
@@ -318,21 +329,27 @@ public class Principal extends JavaPlugin implements Listener {
     public void abrirPreview(Player p, String k) {
         Inventory inv = Bukkit.createInventory(null, 45, c("&0Vista: " + k));
         List<?> items = getKitConfig(k).getList("items");
-        if (items != null) for (Object i : items) inv.addItem((ItemStack) i);
+        if (items != null) for (Object i : items) if (i instanceof ItemStack) inv.addItem((ItemStack) i);
         p.openInventory(inv);
     }
 
     private ItemStack createItem(Material m, String n, boolean glint, String... lore) {
         ItemStack i = new ItemStack(m != null ? m : Material.STONE);
         ItemMeta mt = i.getItemMeta();
-        mt.setDisplayName(c(n));
-        if (lore.length > 0) {
-            List<String> l = new ArrayList<>();
-            for (String s : lore) l.add(c(s));
-            mt.setLore(l);
+        if (mt != null) {
+            mt.setDisplayName(c(n));
+            if (lore.length > 0) {
+                List<String> l = new ArrayList<>();
+                for (String s : lore) l.add(c(s));
+                mt.setLore(l);
+            }
+            if (glint) {
+                // CORRECCIÓN: Usar Enchantment.PROTECTION para mayor compatibilidad
+                mt.addEnchant(Enchantment.PROTECTION, 1, true);
+                mt.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+            }
+            i.setItemMeta(mt);
         }
-        if (glint) { mt.addEnchant(Enchantment.PROTECTION, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
-        i.setItemMeta(mt);
         return i;
     }
 
@@ -345,7 +362,7 @@ public class Principal extends JavaPlugin implements Listener {
     }
 
     public FileConfiguration getKitConfig(String n) { return YamlConfiguration.loadConfiguration(new File(getDataFolder() + "/kits", n + ".yml")); }
-    public void guardarKit(String n, FileConfiguration conf) { try { conf.save(new File(getDataFolder() + "/kits", n + ".yml")); } catch (IOException e) {} }
+    public void guardarKit(String n, FileConfiguration conf) { try { conf.save(new File(getDataFolder() + "/kits", n + ".yml")); } catch (IOException e) { e.printStackTrace(); } }
 
     @EventHandler
     public void alHablar(AsyncPlayerChatEvent e) {
@@ -374,6 +391,6 @@ public class Principal extends JavaPlugin implements Listener {
         c.set("precio", 0.0); c.set("cooldown", 3600); c.set("requiere-permiso", false);
         c.set("auto-equip", false);
         c.set("items", new ArrayList<ItemStack>());
-        try { c.save(f); } catch (IOException e) {}
+        try { c.save(f); } catch (IOException e) { e.printStackTrace(); }
     }
 }

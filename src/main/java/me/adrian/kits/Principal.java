@@ -37,17 +37,17 @@ public class Principal extends JavaPlugin implements Listener {
     // --- MENÚS ---
     public void abrirMenuPrincipal(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Menú Global de Kits"));
-        ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false, (short) 0);
+        ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false, 0);
         for (int i = 0; i < 54; i++) inv.setItem(i, vidrio);
         
-        inv.setItem(22, createItem(Material.CHEST, "&a&lKITS GRATUITOS", true, (short) 0, "&7Click para ver kits normales."));
-        inv.setItem(49, createItem(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", true, (short) 0, "&7Click para ver kits de prestigio."));
+        inv.setItem(22, createItem(Material.CHEST, "&a&lKITS GRATUITOS", true, 0, "&7Click para ver kits normales."));
+        inv.setItem(49, createItem(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", true, 0, "&7Click para ver kits de prestigio."));
         p.openInventory(inv);
     }
 
     public void abrirListaKits(Player p, boolean premium) {
         Inventory inv = Bukkit.createInventory(null, 54, c(premium ? "&bSección VIP" : "&aSección Gratuita"));
-        short color = (short) (premium ? 3 : 5);
+        int color = premium ? 3 : 5;
         ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false, color);
         for (int i = 0; i < 54; i++) {
             if (i < 9 || i > 44 || i % 9 == 0 || (i + 1) % 9 == 0) inv.setItem(i, vidrio);
@@ -61,12 +61,12 @@ public class Principal extends JavaPlugin implements Listener {
                 if (cf.getBoolean("premium") == premium) {
                     String id = f.getName().replace(".yml", "");
                     String icono = cf.getString("icono", premium ? "DIAMOND_SWORD" : "STONE_SWORD");
-                    inv.addItem(createItem(Material.valueOf(icono), "&e&l" + cf.getString("nombre_visual"), premium, (short) 0, 
+                    inv.addItem(createItem(Material.valueOf(icono), "&e&l" + cf.getString("nombre_visual"), premium, 0, 
                         "&7ID: " + id, "&8-------------------------", "&eClick Izquierdo: &fVer contenido", "&bClick Derecho: &fObtener Kit"));
                 }
             }
         }
-        inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, (short) 0));
+        inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, 0));
         p.openInventory(inv);
     }
 
@@ -78,14 +78,14 @@ public class Principal extends JavaPlugin implements Listener {
         if (items != null) {
             for (Object item : items) { if (item instanceof ItemStack) inv.addItem((ItemStack) item); }
         }
-        inv.setItem(40, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ÍTEMS", true, (short) 0));
+        inv.setItem(40, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ÍTEMS", true, 0));
         p.openInventory(inv);
     }
 
     public void abrirEditorIcono(Player p, String id) {
         configurandoIcono.put(p.getUniqueId(), id);
         Inventory inv = Bukkit.createInventory(null, 27, c("&8Icono de: " + id));
-        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, (short) 0));
+        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, 0));
         p.openInventory(inv);
     }
 
@@ -94,18 +94,18 @@ public class Principal extends JavaPlugin implements Listener {
         FileConfiguration cf = getKitConfig(id);
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Ajustes: " + id));
         
-        inv.setItem(10, createItem(Material.CHEST, "&61. Editar ítems", true, (short) 0));
-        inv.setItem(11, createItem(Material.REDSTONE, "&e2. Permiso", cf.getBoolean("permiso_status"), (short) 0));
-        inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, (short) 0));
-        inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, (short) 0));
-        inv.setItem(15, createItem(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, (short) 0));
-        inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, (short) 0));
+        inv.setItem(10, createItem(Material.CHEST, "&61. Editar ítems", true, 0));
+        inv.setItem(11, createItem(Material.REDSTONE, "&e2. Permiso", cf.getBoolean("permiso_status"), 0));
+        inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, 0));
+        inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, 0));
+        inv.setItem(15, createItem(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, 0));
+        inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, 0));
         
         boolean esPre = cf.getBoolean("premium");
-        inv.setItem(19, createItem(esPre ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, (short) 0, esPre ? "&bPREMIUM" : "&aGRATIS"));
-        inv.setItem(21, createItem(Material.BARRIER, "&c&l10. ELIMINAR KIT", false, (short) 0));
+        inv.setItem(19, createItem(esPre ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, 0, esPre ? "&bPREMIUM" : "&aGRATIS"));
+        inv.setItem(21, createItem(Material.BARRIER, "&c&l10. ELIMINAR KIT", false, 0));
 
-        inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, (short) 0));
+        inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, 0));
         p.openInventory(inv);
     }
 
@@ -188,13 +188,13 @@ public class Principal extends JavaPlugin implements Listener {
     private void saveKit(File f, FileConfiguration c) { try { c.save(f); } catch (IOException e) {} }
     private FileConfiguration getKitConfig(String k) { return YamlConfiguration.loadConfiguration(new File(getDataFolder(), "kits/" + k + ".yml")); }
 
-    // --- MÉTODOS DE CREACIÓN DE ITEMS (ARREGLADOS) ---
-    private ItemStack createItem(Material m, String n, boolean g, short d, String... lore) {
-        ItemStack item = new ItemStack(m, 1, d);
+    // --- EL MÉTODO QUE SOLUCIONA TODO ---
+    private ItemStack createItem(Material m, String n, boolean g, int d, String... lore) {
+        ItemStack item = new ItemStack(m, 1, (short) d);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(c(n));
-            if (lore.length > 0) {
+            if (lore != null && lore.length > 0) {
                 List<String> list = new ArrayList<>();
                 for (String s : lore) list.add(c(s));
                 meta.setLore(list);

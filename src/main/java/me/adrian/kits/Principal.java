@@ -34,25 +34,23 @@ public class Principal extends JavaPlugin implements Listener {
 
     public String c(String m) { return ChatColor.translateAlternateColorCodes('&', m); }
 
-    // --- MENÚS ---
+    // --- MENÚS (TODO INCLUIDO) ---
     public void abrirMenuPrincipal(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Menú Global de Kits"));
-        ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false, 0);
+        ItemStack vidrio = crearIcono(Material.STAINED_GLASS_PANE, " ", false, 0);
         for (int i = 0; i < 54; i++) inv.setItem(i, vidrio);
-        
-        inv.setItem(22, createItem(Material.CHEST, "&a&lKITS GRATUITOS", true, 0, "&7Click para ver kits normales."));
-        inv.setItem(49, createItem(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", true, 0, "&7Click para ver kits de prestigio."));
+        inv.setItem(22, crearIcono(Material.CHEST, "&a&lKITS GRATUITOS", true, 0, "&7Click para ver kits normales."));
+        inv.setItem(49, crearIcono(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", true, 0, "&7Click para ver kits de prestigio."));
         p.openInventory(inv);
     }
 
     public void abrirListaKits(Player p, boolean premium) {
         Inventory inv = Bukkit.createInventory(null, 54, c(premium ? "&bSección VIP" : "&aSección Gratuita"));
-        int color = premium ? 3 : 5;
-        ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false, color);
+        int col = premium ? 3 : 5;
+        ItemStack vidrio = crearIcono(Material.STAINED_GLASS_PANE, " ", false, col);
         for (int i = 0; i < 54; i++) {
             if (i < 9 || i > 44 || i % 9 == 0 || (i + 1) % 9 == 0) inv.setItem(i, vidrio);
         }
-
         File folder = new File(getDataFolder(), "kits");
         File[] archivos = folder.listFiles();
         if (archivos != null) {
@@ -60,32 +58,12 @@ public class Principal extends JavaPlugin implements Listener {
                 FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
                 if (cf.getBoolean("premium") == premium) {
                     String id = f.getName().replace(".yml", "");
-                    String icono = cf.getString("icono", premium ? "DIAMOND_SWORD" : "STONE_SWORD");
-                    inv.addItem(createItem(Material.valueOf(icono), "&e&l" + cf.getString("nombre_visual"), premium, 0, 
-                        "&7ID: " + id, "&8-------------------------", "&eClick Izquierdo: &fVer contenido", "&bClick Derecho: &fObtener Kit"));
+                    String iconName = cf.getString("icono", "STONE_SWORD");
+                    inv.addItem(crearIcono(Material.valueOf(iconName), "&e&l" + cf.getString("nombre_visual"), premium, 0, "&7ID: " + id, "&eClick Izquierdo: &fVer", "&bClick Derecho: &fObtener"));
                 }
             }
         }
-        inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, 0));
-        p.openInventory(inv);
-    }
-
-    public void abrirEditorContenido(Player p, String id) {
-        configurandoItems.put(p.getUniqueId(), id);
-        Inventory inv = Bukkit.createInventory(null, 45, c("&8Items de: " + id));
-        FileConfiguration cf = getKitConfig(id);
-        List<?> items = cf.getList("items");
-        if (items != null) {
-            for (Object item : items) { if (item instanceof ItemStack) inv.addItem((ItemStack) item); }
-        }
-        inv.setItem(40, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ÍTEMS", true, 0));
-        p.openInventory(inv);
-    }
-
-    public void abrirEditorIcono(Player p, String id) {
-        configurandoIcono.put(p.getUniqueId(), id);
-        Inventory inv = Bukkit.createInventory(null, 27, c("&8Icono de: " + id));
-        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, 0));
+        inv.setItem(49, crearIcono(Material.ARROW, "&c« Volver", false, 0));
         p.openInventory(inv);
     }
 
@@ -93,19 +71,15 @@ public class Principal extends JavaPlugin implements Listener {
         editandoKit.put(p.getUniqueId(), id);
         FileConfiguration cf = getKitConfig(id);
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Ajustes: " + id));
-        
-        inv.setItem(10, createItem(Material.CHEST, "&61. Editar ítems", true, 0));
-        inv.setItem(11, createItem(Material.REDSTONE, "&e2. Permiso", cf.getBoolean("permiso_status"), 0));
-        inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, 0));
-        inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, 0));
-        inv.setItem(15, createItem(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, 0));
-        inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, 0));
-        
-        boolean esPre = cf.getBoolean("premium");
-        inv.setItem(19, createItem(esPre ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, 0, esPre ? "&bPREMIUM" : "&aGRATIS"));
-        inv.setItem(21, createItem(Material.BARRIER, "&c&l10. ELIMINAR KIT", false, 0));
-
-        inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, 0));
+        inv.setItem(10, crearIcono(Material.CHEST, "&61. Editar ítems", true, 0));
+        inv.setItem(11, crearIcono(Material.REDSTONE, "&e2. Permiso", cf.getBoolean("permiso_status"), 0));
+        inv.setItem(12, crearIcono(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, 0));
+        inv.setItem(13, crearIcono(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, 0));
+        inv.setItem(15, crearIcono(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, 0));
+        inv.setItem(16, crearIcono(Material.NAME_TAG, "&f7. Nombre Visual", true, 0));
+        inv.setItem(19, crearIcono(cf.getBoolean("premium") ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, 0));
+        inv.setItem(21, crearIcono(Material.BARRIER, "&c&l10. ELIMINAR KIT", false, 0));
+        inv.setItem(49, crearIcono(Material.ARROW, "&c« Volver", false, 0));
         p.openInventory(inv);
     }
 
@@ -123,47 +97,21 @@ public class Principal extends JavaPlugin implements Listener {
                 if(t.contains("Global")) abrirListaKits(p, true);
                 else abrirMenuPrincipal(p);
             }
-        } else if (t.contains("Items de:") && slot == 40) {
-            e.setCancelled(true);
-            String id = configurandoItems.remove(p.getUniqueId());
-            FileConfiguration cf = getKitConfig(id);
-            List<ItemStack> items = new ArrayList<>();
-            for (int i = 0; i < 36; i++) {
-                if (e.getInventory().getItem(i) != null) items.add(e.getInventory().getItem(i));
-            }
-            cf.set("items", items);
-            saveKit(new File(getDataFolder(), "kits/" + id + ".yml"), cf);
-            abrirEditorKit(p, id);
-        } else if (t.contains("Icono de:") && slot == 22) {
-            e.setCancelled(true);
-            String id = configurandoIcono.remove(p.getUniqueId());
-            if (e.getInventory().getItem(13) != null) {
-                FileConfiguration cf = getKitConfig(id);
-                cf.set("icono", e.getInventory().getItem(13).getType().toString());
-                saveKit(new File(getDataFolder(), "kits/" + id + ".yml"), cf);
-            }
-            abrirEditorKit(p, id);
         } else if (t.contains("Ajustes:")) {
             e.setCancelled(true);
             String id = editandoKit.get(p.getUniqueId());
             File f = new File(getDataFolder(), "kits/" + id + ".yml");
-            FileConfiguration config = YamlConfiguration.loadConfiguration(f);
-            
-            if (slot == 10) { abrirEditorContenido(p, id); return; }
-            else if (slot == 11) config.set("permiso_status", !config.getBoolean("permiso_status"));
+            FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
+            if (slot == 11) cf.set("permiso_status", !cf.getBoolean("permiso_status"));
             else if (slot == 12) { p.closeInventory(); esperandoPrecio.put(p.getUniqueId(), id); return; }
             else if (slot == 13) { p.closeInventory(); esperandoCooldown.put(p.getUniqueId(), id); return; }
-            else if (slot == 15) { abrirEditorIcono(p, id); return; }
             else if (slot == 16) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), id); return; }
             else if (slot == 19) {
-                boolean b = !config.getBoolean("premium");
-                config.set("premium", b);
-                config.set("icono", b ? "DIAMOND_SWORD" : "STONE_SWORD");
+                boolean b = !cf.getBoolean("premium");
+                cf.set("premium", b);
             } else if (slot == 21) { f.delete(); p.closeInventory(); p.sendMessage(c("&cKit eliminado.")); return; }
             else if (slot == 49) { abrirMenuPrincipal(p); return; }
-            
-            saveKit(f, config);
-            abrirEditorKit(p, id);
+            saveKit(f, cf); abrirEditorKit(p, id);
         }
     }
 
@@ -178,26 +126,26 @@ public class Principal extends JavaPlugin implements Listener {
     private void actualizarDato(Player p, AsyncPlayerChatEvent e, String ruta, Map<UUID, String> mapa, boolean n) {
         e.setCancelled(true);
         String id = mapa.remove(p.getUniqueId());
-        FileConfiguration config = getKitConfig(id);
-        if (n) { try { config.set(ruta, Double.parseDouble(e.getMessage())); } catch (Exception ex) {} }
-        else { config.set(ruta, e.getMessage()); }
-        saveKit(new File(getDataFolder(), "kits/" + id + ".yml"), config);
+        FileConfiguration cf = getKitConfig(id);
+        if (n) { try { cf.set(ruta, Double.parseDouble(e.getMessage())); } catch (Exception ex) {} }
+        else { cf.set(ruta, e.getMessage()); }
+        saveKit(new File(getDataFolder(), "kits/" + id + ".yml"), cf);
         Bukkit.getScheduler().runTask(this, () -> abrirEditorKit(p, id));
     }
 
     private void saveKit(File f, FileConfiguration c) { try { c.save(f); } catch (IOException e) {} }
     private FileConfiguration getKitConfig(String k) { return YamlConfiguration.loadConfiguration(new File(getDataFolder(), "kits/" + k + ".yml")); }
 
-    // --- EL MÉTODO ARREGLADO (ACEPTA TODO) ---
-    private ItemStack createItem(Material m, String n, boolean g, int d, String... lore) {
+    // --- EL MÉTODO DEFINITIVO (RENOMBRADO PARA EVITAR CONFLICTOS) ---
+    private ItemStack crearIcono(Material m, String n, boolean g, int d, String... lore) {
         ItemStack item = new ItemStack(m, 1, (short) d);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(c(n));
-            if (lore != null && lore.length > 0) {
-                List<String> list = new ArrayList<>();
-                for (String s : lore) list.add(c(s));
-                meta.setLore(list);
+            if (lore.length > 0) {
+                List<String> l = new ArrayList<>();
+                for (String s : lore) l.add(c(s));
+                meta.setLore(l);
             }
             if (g) meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
             item.setItemMeta(meta);

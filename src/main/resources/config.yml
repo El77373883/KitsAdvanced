@@ -1,0 +1,26 @@
+# ============================================
+#       KitsAdvanced - Creado por Adrian
+# ============================================
+
+# El prefijo que aparecerá antes de cada mensaje
+prefix: "&8[&bKitsAdvanced&8] &7» "
+
+# Mensajes personalizables (usa & para colores)
+messages:
+  no-permission: "&cNo tienes permiso para usar este comando."
+  reload: "&a¡Configuración recargada correctamente!"
+  kit-received: "&eHas recibido el kit: &b%kit%"
+
+# Configuración del menú principal
+settings:
+  inventory-name: "&0&lPanel de Kits"
+  inventory-slots: 27
+  close-on-select: true
+
+# Aquí se guardarán los kits que crees
+kits:
+  default:
+    display-name: "&fKit Inicial"
+    item: "STONE_SWORD"
+    lore:
+      - "&7Un kit básico para empezar."

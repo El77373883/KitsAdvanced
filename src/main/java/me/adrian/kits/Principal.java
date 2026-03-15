@@ -188,7 +188,7 @@ public class Principal extends JavaPlugin implements Listener {
     private void saveKit(File f, FileConfiguration c) { try { c.save(f); } catch (IOException e) {} }
     private FileConfiguration getKitConfig(String k) { return YamlConfiguration.loadConfiguration(new File(getDataFolder(), "kits/" + k + ".yml")); }
 
-    // --- EL MÉTODO QUE SOLUCIONA TODO ---
+    // --- EL MÉTODO ARREGLADO (ACEPTA TODO) ---
     private ItemStack createItem(Material m, String n, boolean g, int d, String... lore) {
         ItemStack item = new ItemStack(m, 1, (short) d);
         ItemMeta meta = item.getItemMeta();

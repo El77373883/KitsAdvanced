@@ -34,7 +34,7 @@ public class Principal extends JavaPlugin implements Listener {
 
     public String c(String m) { return ChatColor.translateAlternateColorCodes('&', m); }
 
-    // --- 1. MENÚ PRINCIPAL (CON SLOT 49 VIP) ---
+    // --- MENÚS ---
     public void abrirMenuPrincipal(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Menú Global de Kits"));
         ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false, (short) 0);
@@ -45,7 +45,6 @@ public class Principal extends JavaPlugin implements Listener {
         p.openInventory(inv);
     }
 
-    // --- 2. LISTA DE KITS (CON COLORES AZUL/VERDE) ---
     public void abrirListaKits(Player p, boolean premium) {
         Inventory inv = Bukkit.createInventory(null, 54, c(premium ? "&bSección VIP" : "&aSección Gratuita"));
         short color = (short) (premium ? 3 : 5);
@@ -71,7 +70,7 @@ public class Principal extends JavaPlugin implements Listener {
         p.openInventory(inv);
     }
 
-    // --- 3. EDITOR DE CONTENIDO (OPCIÓN 1) ---
+    // --- EDITORES ---
     public void abrirEditorContenido(Player p, String id) {
         configurandoItems.put(p.getUniqueId(), id);
         Inventory inv = Bukkit.createInventory(null, 45, c("&8Items de: " + id));
@@ -80,34 +79,32 @@ public class Principal extends JavaPlugin implements Listener {
         if (items != null) {
             for (Object item : items) { if (item instanceof ItemStack) inv.addItem((ItemStack) item); }
         }
-        inv.setItem(40, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ÍTEMS", true, (short) 0, "&7Click para guardar el contenido."));
+        inv.setItem(40, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ÍTEMS", true, (short) 0, "&7Click para guardar todo."));
         p.openInventory(inv);
     }
 
-    // --- 4. EDITOR DE ICONO (OPCIÓN 6) ---
     public void abrirEditorIcono(Player p, String id) {
         configurandoIcono.put(p.getUniqueId(), id);
         Inventory inv = Bukkit.createInventory(null, 27, c("&8Icono de: " + id));
-        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, (short) 0, "&7Pon el item en el centro (slot 13)."));
+        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, (short) 0, "&7Pon el item en el centro (13)."));
         p.openInventory(inv);
     }
 
-    // --- 5. PANEL DE AJUSTES (CON BARRERA PARA BORRAR) ---
     public void abrirEditorKit(Player p, String id) {
         editandoKit.put(p.getUniqueId(), id);
         FileConfiguration cf = getKitConfig(id);
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Ajustes: " + id));
         
-        inv.setItem(10, createItem(Material.CHEST, "&61. Editar ítems", true, (short) 0));
-        inv.setItem(11, createItem(Material.REDSTONE, "&e2. Permiso", cf.getBoolean("permiso_status"), (short) 0));
-        inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, (short) 0));
-        inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, (short) 0));
-        inv.setItem(15, createItem(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, (short) 0));
-        inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, (short) 0));
+        inv.setItem(10, createItem(Material.CHEST, "&61. Editar ítems", true, (short) 0, "&7Añade o quita objetos del kit."));
+        inv.setItem(11, createItem(Material.REDSTONE, "&e2. Permiso", cf.getBoolean("permiso_status"), (short) 0, "&7Estado: " + cf.getBoolean("permiso_status")));
+        inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, (short) 0, "&7Precio: $" + cf.getDouble("precio")));
+        inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, (short) 0, "&7Tiempo: " + cf.getLong("cooldown") + "s"));
+        inv.setItem(15, createItem(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, (short) 0, "&7Cambia la imagen del kit."));
+        inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, (short) 0, "&7Nombre: " + cf.getString("nombre_visual")));
         
         boolean esPre = cf.getBoolean("premium");
         inv.setItem(19, createItem(esPre ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, (short) 0, esPre ? "&bPREMIUM" : "&aGRATIS"));
-        inv.setItem(21, createItem(Material.BARRIER, "&c&l10. ELIMINAR KIT", false, (short) 0, "&7Click para borrar el archivo .yml"));
+        inv.setItem(21, createItem(Material.BARRIER, "&c&l10. ELIMINAR KIT", false, (short) 0, "&4¡CUIDADO! Borra el archivo .yml"));
 
         inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, (short) 0));
         p.openInventory(inv);
@@ -151,22 +148,22 @@ public class Principal extends JavaPlugin implements Listener {
             e.setCancelled(true);
             String id = editandoKit.get(p.getUniqueId());
             File f = new File(getDataFolder(), "kits/" + id + ".yml");
-            FileConfiguration config = YamlConfiguration.loadConfiguration(f);
+            FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
             
             if (slot == 10) { abrirEditorContenido(p, id); return; }
-            else if (slot == 11) config.set("permiso_status", !config.getBoolean("permiso_status"));
+            else if (slot == 11) cf.set("permiso_status", !cf.getBoolean("permiso_status"));
             else if (slot == 12) { p.closeInventory(); esperandoPrecio.put(p.getUniqueId(), id); return; }
             else if (slot == 13) { p.closeInventory(); esperandoCooldown.put(p.getUniqueId(), id); return; }
             else if (slot == 15) { abrirEditorIcono(p, id); return; }
             else if (slot == 16) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), id); return; }
             else if (slot == 19) {
-                boolean b = !config.getBoolean("premium");
-                config.set("premium", b);
-                config.set("icono", b ? "DIAMOND_SWORD" : "STONE_SWORD");
-            } else if (slot == 21) { f.delete(); p.closeInventory(); p.sendMessage(c("&cKit eliminado correctamente.")); return; }
+                boolean b = !cf.getBoolean("premium");
+                cf.set("premium", b);
+                cf.set("icono", b ? "DIAMOND_SWORD" : "STONE_SWORD");
+            } else if (slot == 21) { f.delete(); p.closeInventory(); p.sendMessage(c("&cKit eliminado.")); return; }
             else if (slot == 49) { abrirMenuPrincipal(p); return; }
             
-            saveKit(f, config);
+            saveKit(f, cf);
             abrirEditorKit(p, id);
         }
     }
@@ -179,11 +176,11 @@ public class Principal extends JavaPlugin implements Listener {
         else if (esperandoCooldown.containsKey(p.getUniqueId())) actualizarDato(p, e, "cooldown", esperandoCooldown, true);
     }
 
-    private void actualizarDato(Player p, AsyncPlayerChatEvent e, String ruta, Map<UUID, String> mapa, boolean esNum) {
+    private void actualizarDato(Player p, AsyncPlayerChatEvent e, String ruta, Map<UUID, String> mapa, boolean n) {
         e.setCancelled(true);
         String id = mapa.remove(p.getUniqueId());
         FileConfiguration config = getKitConfig(id);
-        if (esNum) {
+        if (n) {
             try { config.set(ruta, Double.parseDouble(e.getMessage())); } catch (Exception ex) {}
         } else { config.set(ruta, e.getMessage()); }
         saveKit(new File(getDataFolder(), "kits/" + id + ".yml"), config);
@@ -193,15 +190,17 @@ public class Principal extends JavaPlugin implements Listener {
     private void saveKit(File f, FileConfiguration c) { try { c.save(f); } catch (IOException e) {} }
     private FileConfiguration getKitConfig(String k) { return YamlConfiguration.loadConfiguration(new File(getDataFolder(), "kits/" + k + ".yml")); }
 
-    // --- EL MÉTODO ARREGLADO CON 5 ARGUMENTOS ---
+    // --- EL MÉTODO QUE SOLUCIONA LOS ERRORES ---
     private ItemStack createItem(Material m, String n, boolean g, short d, String... lore) {
         ItemStack item = new ItemStack(m, 1, d);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(c(n));
-            List<String> list = new ArrayList<>();
-            for (String s : lore) list.add(c(s));
-            meta.setLore(list);
+            if (lore != null && lore.length > 0) {
+                List<String> list = new ArrayList<>();
+                for (String s : lore) list.add(c(s));
+                meta.setLore(list);
+            }
             if (g) meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
             item.setItemMeta(meta);
         }

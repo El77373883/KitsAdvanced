@@ -36,7 +36,7 @@ public class Principal extends JavaPlugin implements Listener {
 
             if (args[0].equalsIgnoreCase("create") && args.length == 2) {
                 ItemStack item = p.getInventory().getItemInMainHand();
-                if (item.getType() == Material.AIR) {
+                if (item == null || item.getType() == Material.AIR) {
                     p.sendMessage(color("&c¡Debes tener un item en la mano!"));
                     return true;
                 }
@@ -49,11 +49,14 @@ public class Principal extends JavaPlugin implements Listener {
             if (args[0].equalsIgnoreCase("panel")) {
                 Inventory inv = Bukkit.createInventory(null, 27, color("&0&lPanel de Kits"));
                 if (getConfig().getConfigurationSection("Kits") != null) {
-                    for (String key : getConfig().getConfigurationSection("Kits").keySet()) {
+                    // AQUÍ ESTABA EL ERROR: Se cambió keySet() por getKeys(false)
+                    for (String key : getConfig().getConfigurationSection("Kits").getKeys(false)) {
                         ItemStack icon = new ItemStack(Material.CHEST);
                         ItemMeta meta = icon.getItemMeta();
-                        meta.setDisplayName(color("&6Kit: &e" + key));
-                        icon.setItemMeta(meta);
+                        if (meta != null) {
+                            meta.setDisplayName(color("&6Kit: &e" + key));
+                            icon.setItemMeta(meta);
+                        }
                         inv.addItem(icon);
                     }
                 }
@@ -71,11 +74,13 @@ public class Principal extends JavaPlugin implements Listener {
             if (e.getCurrentItem() == null || !e.getCurrentItem().hasItemMeta()) return;
             
             Player p = (Player) e.getWhoClicked();
-            String name = ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Kit: ", "");
+            // Corregido para evitar errores de texto
+            String displayName = e.getCurrentItem().getItemMeta().getDisplayName();
+            String name = ChatColor.stripColor(displayName).replace("Kit: ", "");
             
             ItemStack kitItem = getConfig().getItemStack("Kits." + name + ".item");
             if (kitItem != null) {
-                p.getInventory().addItem(kitItem);
+                p.getInventory().addItem(kitItem.clone());
                 p.sendMessage(color("&aHas recibido el kit: &e" + name));
             }
         }

@@ -34,7 +34,7 @@ public class Principal extends JavaPlugin implements Listener {
 
     public String c(String m) { return ChatColor.translateAlternateColorCodes('&', m); }
 
-    // --- MENÚS ---
+    // --- MENÚS (TODO INCLUIDO) ---
     public void abrirMenuPrincipal(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Menú Global de Kits"));
         ItemStack vidrio = createItem(Material.STAINED_GLASS_PANE, " ", false, (short) 0);
@@ -178,6 +178,7 @@ public class Principal extends JavaPlugin implements Listener {
     private void saveKit(File f, FileConfiguration c) { try { c.save(f); } catch (IOException e) {} }
     private FileConfiguration getKitConfig(String k) { return YamlConfiguration.loadConfiguration(new File(getDataFolder(), "kits/" + k + ".yml")); }
 
+    // --- EL MÉTODO QUE ESTABA DANDO EL ERROR ---
     private ItemStack createItem(Material m, String n, boolean g, short d, String... lore) {
         ItemStack item = new ItemStack(m, 1, d);
         ItemMeta meta = item.getItemMeta();

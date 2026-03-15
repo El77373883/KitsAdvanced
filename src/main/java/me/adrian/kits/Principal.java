@@ -56,7 +56,6 @@ public class Principal extends JavaPlugin implements Listener {
         }
     }
 
-    // --- MENÚ PARA USUARIOS ---
     public void abrirMenuKits(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&0&lMENÚ DE KITS"));
         for (int i = 0; i < 54; i++) {
@@ -77,32 +76,26 @@ public class Principal extends JavaPlugin implements Listener {
         return createItem(icono, "&e&lKit: &f" + k, pre, "&7Precio: &a$" + conf.getDouble("precio"), "&e▶ Click para reclamar");
     }
 
-    // --- PANEL DE ADMINISTRACIÓN (PAGINACIÓN Y COFRE) ---
     public void abrirPanelAdmin(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&0Panel: Gestionar Kits"));
         File[] archivos = new File(getDataFolder(), "kits").listFiles((dir, name) -> name.endsWith(".yml"));
         int pg = paginaActual.getOrDefault(p.getUniqueId(), 0);
 
-        // Si no hay kits, ponemos el cofre gigante en el centro
         if (archivos == null || archivos.length == 0) {
             inv.setItem(22, createItem(Material.CHEST, "&b&lCREAR TU PRIMER KIT", true, "&7No tienes kits aún.", "&e▶ Click para empezar"));
         } else {
-            // Botón de crear siempre al inicio
             inv.setItem(0, createItem(Material.TRAPPED_CHEST, "&b&l[+] CREAR NUEVO KIT", true, "&7Haz click para añadir otro kit"));
-            
             int start = pg * 44;
             for (int i = 0; i < 44 && (start + i) < archivos.length; i++) {
                 String nombre = archivos[start + i].getName().replace(".yml", "");
                 inv.setItem(i + 1, createItem(Material.PAPER, "&eEditar: &f" + nombre, false, "&7Click para abrir las 9 opciones"));
             }
-
             if (archivos.length > (pg + 1) * 44) inv.setItem(53, createItem(Material.ARROW, "&aPágina Siguiente", false));
             if (pg > 0) inv.setItem(45, createItem(Material.ARROW, "&cPágina Anterior", false));
         }
         p.openInventory(inv);
     }
 
-    // --- LAS 9 OPCIONES DEL KIT ---
     public void abrirOpcionesKit(Player p, String k) {
         editandoKit.put(p.getUniqueId(), k);
         FileConfiguration conf = getKitConfig(k);
@@ -139,7 +132,7 @@ public class Principal extends JavaPlugin implements Listener {
             Material m = e.getCurrentItem().getType();
             if (m == Material.CHEST || m == Material.TRAPPED_CHEST) {
                 p.closeInventory(); modoChat.put(p.getUniqueId(), "CREAR");
-                p.sendMessage(c("&b&l[+] &f¿Qué nombre quieres ponerle al kit?"));
+                p.sendMessage(c("&b&l[+] &f¿Nombre del kit?"));
             } else if (m == Material.PAPER) {
                 abrirOpcionesKit(p, ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Editar: ", ""));
             } else if (e.getRawSlot() == 53) { paginaActual.put(p.getUniqueId(), paginaActual.get(p.getUniqueId()) + 1); abrirPanelAdmin(p); }
@@ -149,14 +142,14 @@ public class Principal extends JavaPlugin implements Listener {
             FileConfiguration cf = getKitConfig(k);
             if (e.getRawSlot() == 10) abrirCofreEditor(p, k);
             if (e.getRawSlot() == 11 || e.getRawSlot() == 22) { toggle(p, cf, "requiere-permiso", k); abrirOpcionesKit(p, k); }
-            if (e.getRawSlot() == 12) { p.closeInventory(); modoChat.put(p.getUniqueId(), "PRECIO"); p.sendMessage(c("&e&l[!] &fEscribe el precio:")); }
-            if (e.getRawSlot() == 13) { p.closeInventory(); modoChat.put(p.getUniqueId(), "COOLDOWN"); p.sendMessage(c("&b&l[!] &fSegundos de cooldown:")); }
+            if (e.getRawSlot() == 12) { p.closeInventory(); modoChat.put(p.getUniqueId(), "PRECIO"); }
+            if (e.getRawSlot() == 13) { p.closeInventory(); modoChat.put(p.getUniqueId(), "COOLDOWN"); }
             if (e.getRawSlot() == 14) {
-                if (e.getClick() == ClickType.RIGHT) { p.closeInventory(); modoChat.put(p.getUniqueId(), "TEMP_TIME"); p.sendMessage(c("&b&l[!] &fTiempo (1d, 1h, 30s):")); }
+                if (e.getClick() == ClickType.RIGHT) { p.closeInventory(); modoChat.put(p.getUniqueId(), "TEMP_TIME"); }
                 else { toggle(p, cf, "es-temporal", k); abrirOpcionesKit(p, k); }
             }
-            if (e.getRawSlot() == 20) { p.closeInventory(); modoChat.put(p.getUniqueId(), "ICONO"); p.sendMessage(c("&d&l[!] &fMaterial:")); }
-            if (e.getRawSlot() == 21) { p.closeInventory(); modoChat.put(p.getUniqueId(), "NOMBRE"); p.sendMessage(c("&f&l[!] &fNuevo nombre:")); }
+            if (e.getRawSlot() == 20) { p.closeInventory(); modoChat.put(p.getUniqueId(), "ICONO"); }
+            if (e.getRawSlot() == 21) { p.closeInventory(); modoChat.put(p.getUniqueId(), "NOMBRE"); }
             if (e.getRawSlot() == 24) { new File(getDataFolder() + "/kits", k + ".yml").delete(); abrirPanelAdmin(p); }
             if (e.getRawSlot() == 40) abrirPanelAdmin(p);
         } else if (t.equals("MENÚ DE KITS")) {
@@ -176,23 +169,20 @@ public class Principal extends JavaPlugin implements Listener {
 
         Bukkit.getScheduler().runTask(this, () -> {
             try {
-                if (modo.equals("CREAR")) { 
-                    crearKitBase(msg); 
-                    p.sendMessage(c("&a&l✔ &fKit &e" + msg + " &fcreado. Configúralo aquí:"));
-                    abrirOpcionesKit(p, msg); 
-                } else {
+                if (modo.equals("CREAR")) { crearKitBase(msg); abrirOpcionesKit(p, msg); }
+                else {
                     FileConfiguration cf = getKitConfig(k);
                     if (modo.equals("PRECIO")) cf.set("precio", Double.parseDouble(msg));
                     if (modo.equals("COOLDOWN")) { cf.set("cooldown-segundos", Integer.parseInt(msg)); cf.set("cooldown-activado", true); }
                     if (modo.equals("TEMP_TIME")) { cf.set("duracion-temp", msg); cf.set("es-temporal", true); }
                     if (modo.equals("ICONO")) cf.set("icono", Material.valueOf(msg.toUpperCase()).name());
-                    if (modo.equals("NOMBRE")) { 
-                        new File(getDataFolder() + "/kits", k + ".yml").renameTo(new File(getDataFolder() + "/kits", msg + ".yml")); 
-                        abrirOpcionesKit(p, msg); 
+                    if (modo.equals("NOMBRE")) {
+                        new File(getDataFolder() + "/kits", k + ".yml").renameTo(new File(getDataFolder() + "/kits", msg + ".yml"));
+                        abrirOpcionesKit(p, msg);
                     } else { guardarKit(k, cf); abrirOpcionesKit(p, k); }
                 }
                 modoChat.remove(p.getUniqueId());
-            } catch (Exception ex) { p.sendMessage(c("&c&l✘ &7Entrada inválida.")); modoChat.remove(p.getUniqueId()); }
+            } catch (Exception ex) { p.sendMessage(c("&c&l✘ &7Error.")); modoChat.remove(p.getUniqueId()); }
         });
     }
 
@@ -204,8 +194,9 @@ public class Principal extends JavaPlugin implements Listener {
 
     private void darKit(Player p, String k) {
         FileConfiguration cf = getKitConfig(k);
+        if (cf == null) return;
         if (cf.getBoolean("requiere-permiso") && !p.hasPermission("advanced.kits." + k.toLowerCase())) {
-            p.sendMessage(c("&c&l✘ &7Sin permiso: &fadvanced.kits." + k.toLowerCase())); return;
+            p.sendMessage(c("&c&l✘ &7Sin permiso.")); return;
         }
         for (Object o : cf.getList("items")) p.getInventory().addItem((ItemStack) o);
         p.sendMessage(c("&a&l✔ &fKit recibido."));
@@ -275,9 +266,10 @@ public class Principal extends JavaPlugin implements Listener {
 
     private ItemStack createItem(Material m, String n, boolean g, String... lore) {
         ItemStack i = new ItemStack(m); ItemMeta mt = i.getItemMeta();
+        if (mt == null) return i;
         mt.setDisplayName(c(n)); List<String> l = new ArrayList<>();
         for (String s : lore) l.add(c(s)); mt.setLore(l);
-        if (g) { mt.addEnchant(Enchantment.DURABILITY, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
+        if (g) { mt.addEnchant(Enchantment.ARROW_INFINITE, 1, true); mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); }
         i.setItemMeta(mt); return i;
     }
 }

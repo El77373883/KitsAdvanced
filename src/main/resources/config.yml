@@ -22,11 +22,12 @@ mensajes:
     kit-created: "&a&lSUCCESS! &eThe kit &b%kit% &ehas been created."
     wait: "&c&lWAIT: &7You need to wait &e%time% &7more."
 
-# Configuración técnica
-settings:
-  inventory-name: "&0&lPanel de Kits"
-  sound-on-receive: "ENTITY_PLAYER_LEVELUP"
+# Datos internos (Manejados por el plugin)
+kits:
+  # Kit de ejemplo para que el archivo no esté vacío
+  ejemplo:
+    requiere-permiso: false
+    tiempo: 60
+    items: []
 
-# Datos internos (No editar manualmente)
-kits: {}
 usuarios: {}

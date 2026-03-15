@@ -1,0 +1,13 @@
+name: KitsAdvanced
+version: 1.0
+main: me.adrian.kits.Principal
+api-version: '1.21'
+author: Adrian YT
+description: Plugin de kits profesional con Panel GUI y protección de código.
+
+commands:
+  advancedkits:
+    description: Comando principal de KitsAdvanced.
+    usage: /advancedkits <create/delete/claim/panel/info> [nombre]
+    aliases: [akits, adk]
+    permission: kits.admin

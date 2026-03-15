@@ -3,13 +3,13 @@ package me.adrian.kits;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
@@ -17,7 +17,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.ChatColor;
 
 import java.util.*;
 
@@ -26,18 +25,19 @@ public class Principal extends JavaPlugin implements Listener {
     private final Map<UUID, String> esperandoChat = new HashMap<>();
     private List<ItemStack> itemsKitGuardados = new ArrayList<>();
     
-    // Estados del Plugin
+    // Estados del Plugin (Variables en memoria)
     private String nombreKitActivo = "Kit Inicial";
     private String tiempoKitActivo = "1h";
     private String categoriaSeleccionada = "DEFAULT";
     private boolean autoEquiparItems = true;
-    private boolean permisosRequeridos = true;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         Bukkit.getPluginManager().registerEvents(this, this);
-        getCommand("akits").setExecutor(new KitsCommand());
+        if (getCommand("akits") != null) {
+            getCommand("akits").setExecutor(new KitsCommand());
+        }
     }
 
     public class KitsCommand implements CommandExecutor {
@@ -59,7 +59,7 @@ public class Principal extends JavaPlugin implements Listener {
         }
     }
 
-    // --- MENÚS DE USUARIO ---
+    // --- MENÚS DE SELECCIÓN ---
     public void abrirMenuCategorias(Player p) {
         Inventory inv = Bukkit.createInventory(null, 27, color("&0Selecciona Categoría"));
         inv.setItem(11, createItem(Material.CHEST, "&a&lKITS GRATUITOS", "&7Acceso para todos los usuarios."));
@@ -80,7 +80,7 @@ public class Principal extends JavaPlugin implements Listener {
         inv.setItem(10, createItem(Material.CLOCK, "&e&lTIEMPO", "&7Actual: &f" + tiempoKitActivo, "&bClick para editar en chat."));
         inv.setItem(11, createItem(Material.ANVIL, "&a&lNOMBRE", "&7Actual: &f" + nombreKitActivo, "&bClick para editar en chat."));
         
-        // EDITOR VISUAL
+        // EDITOR VISUAL (COFRE)
         inv.setItem(13, createItem(Material.CHEST, "&6&lSUBIR ÍTEMS AL KIT", "&7Haz click para abrir el editor.", "&7Lo que metas aquí será el kit.", "", "&e¡Sin configurar códigos!"));
 
         String stEquip = autoEquiparItems ? "&aON" : "&cOFF";
@@ -105,7 +105,9 @@ public class Principal extends JavaPlugin implements Listener {
             Material m = e.getCurrentItem().getType();
             if (m == Material.CHEST) {
                 Inventory editor = Bukkit.createInventory(null, 27, color("&0Editor: Sube tus ítems"));
-                for (ItemStack item : itemsKitGuardados) editor.addItem(item);
+                for (ItemStack item : itemsKitGuardados) {
+                    if (item != null) editor.addItem(item);
+                }
                 p.openInventory(editor);
             } else if (m == Material.BOOK) {
                 categoriaSeleccionada = categoriaSeleccionada.equals("DEFAULT") ? "PREMIUM" : "DEFAULT";
@@ -139,10 +141,11 @@ public class Principal extends JavaPlugin implements Listener {
         if (e.getView().getTitle().equals(color("&0Editor: Sube tus ítems"))) {
             itemsKitGuardados.clear();
             for (ItemStack item : e.getInventory().getContents()) {
-                if (item != null && item.getType() != Material.AIR) itemsKitGuardados.add(item);
+                if (item != null && item.getType() != Material.AIR) {
+                    itemsKitGuardados.add(item);
+                }
             }
             e.getPlayer().sendMessage(color("&a&l¡SINCRONIZADO! &fLos ítems se han guardado en el kit."));
-            e.getPlayer().getPointOfView(); // Trick to play sound
             ((Player) e.getPlayer()).playSound(e.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
         }
     }
@@ -153,10 +156,14 @@ public class Principal extends JavaPlugin implements Listener {
         if (esperandoChat.containsKey(p.getUniqueId())) {
             e.setCancelled(true);
             String modo = esperandoChat.get(p.getUniqueId());
-            if (modo.equals("NOMBRE")) nombreKitActivo = e.getMessage();
-            else tiempoKitActivo = e.getMessage();
+            if (modo.equals("NOMBRE")) {
+                nombreKitActivo = e.getMessage();
+            } else {
+                tiempoKitActivo = e.getMessage();
+            }
             esperandoChat.remove(p.getUniqueId());
             p.sendMessage(color("&a¡Cambio aplicado con éxito!"));
+            // Regresar al panel en el hilo principal
             Bukkit.getScheduler().runTask(this, () -> abrirPanelAdmin(p));
         }
     }
@@ -168,16 +175,20 @@ public class Principal extends JavaPlugin implements Listener {
         p.closeInventory();
     }
 
-    private String color(String s) { return ChatColor.translateAlternateColorCodes('&', s); }
+    private String color(String s) {
+        return ChatColor.translateAlternateColorCodes('&', s);
+    }
 
     private ItemStack createItem(Material mat, String name, String... lore) {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(color(name));
-        List<String> l = new ArrayList<>();
-        for (String line : lore) l.add(color(line));
-        meta.setLore(l);
-        item.setItemMeta(meta);
+        if (meta != null) {
+            meta.setDisplayName(color(name));
+            List<String> l = new ArrayList<>();
+            for (String line : lore) l.add(color(line));
+            meta.setLore(l);
+            item.setItemMeta(meta);
+        }
         return item;
     }
 }

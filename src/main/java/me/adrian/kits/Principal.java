@@ -17,7 +17,6 @@ public class Principal extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        // Crear carpeta de kits si no existe
         File f = new File(getDataFolder(), "kits");
         if (!f.exists()) f.mkdirs();
         
@@ -29,7 +28,7 @@ public class Principal extends JavaPlugin implements Listener {
         return ChatColor.translateAlternateColorCodes('&', m); 
     }
 
-    // Método ultra-seguro para crear ítems
+    // Método que NO da error en VS Code
     private ItemStack crearIcono(Material mat, String nombre, int data, String lore) {
         ItemStack item = new ItemStack(mat, 1, (short) data);
         ItemMeta meta = item.getItemMeta();
@@ -43,37 +42,29 @@ public class Principal extends JavaPlugin implements Listener {
         return item;
     }
 
-    // Menú Principal
     public void abrirMenuPrincipal(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Menú Global de Kits"));
         
-        // Rellenar fondo con cristal negro
+        // Fondo de cristal negro
         ItemStack vidrio = crearIcono(Material.STAINED_GLASS_PANE, " ", 15, "");
         for (int i = 0; i < 54; i++) inv.setItem(i, vidrio);
         
-        // Opciones principales
         inv.setItem(22, crearIcono(Material.CHEST, "&a&lKITS GRATUITOS", 0, "&7Click para ver kits normales."));
         inv.setItem(49, crearIcono(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", 0, "&7Click para ver kits VIP."));
         
         p.openInventory(inv);
     }
 
-    // Lista de Kits (Normales o VIP)
     public void abrirListaKits(Player p, boolean premium) {
-        String titulo = premium ? "&bSección VIP" : "&aSección Gratuita";
-        Inventory inv = Bukkit.createInventory(null, 54, c(titulo));
+        Inventory inv = Bukkit.createInventory(null, 54, c(premium ? "&bSección VIP" : "&aSección Gratuita"));
         
-        int colorVidrio = premium ? 3 : 5; // Azul para VIP, Verde para Normal
+        int colorVidrio = premium ? 3 : 5; 
         ItemStack vidrio = crearIcono(Material.STAINED_GLASS_PANE, " ", colorVidrio, "");
         
-        // Decoración de bordes
         for (int i = 0; i < 54; i++) {
-            if (i < 9 || i > 44 || i % 9 == 0 || (i + 1) % 9 == 0) {
-                inv.setItem(i, vidrio);
-            }
+            if (i < 9 || i > 44 || i % 9 == 0 || (i + 1) % 9 == 0) inv.setItem(i, vidrio);
         }
 
-        // Cargar kits desde la carpeta
         File folder = new File(getDataFolder(), "kits");
         File[] archivos = folder.listFiles();
         if (archivos != null) {
@@ -81,15 +72,14 @@ public class Principal extends JavaPlugin implements Listener {
                 if (f.getName().endsWith(".yml")) {
                     FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
                     if (cf.getBoolean("premium") == premium) {
-                        String nombreKit = cf.getString("nombre_visual", f.getName().replace(".yml", ""));
-                        inv.addItem(crearIcono(Material.CHEST, "&e" + nombreKit, 0, "&7Click para reclamar este kit"));
+                        String visual = cf.getString("nombre_visual", f.getName().replace(".yml", ""));
+                        inv.addItem(crearIcono(Material.CHEST, "&e" + visual, 0, "&7Click para reclamar"));
                     }
                 }
             }
         }
         
-        // Botón de volver
-        inv.setItem(49, crearIcono(Material.ARROW, "&c« Volver al Inicio", 0, ""));
+        inv.setItem(49, crearIcono(Material.ARROW, "&c« Volver", 0, ""));
         p.openInventory(inv);
     }
 
@@ -101,7 +91,6 @@ public class Principal extends JavaPlugin implements Listener {
         String titulo = e.getView().getTitle();
         int slot = e.getRawSlot();
 
-        // Bloquear que saquen los ítems del menú
         if (titulo.contains("Kits") || titulo.contains("Sección")) {
             e.setCancelled(true);
             
@@ -109,21 +98,15 @@ public class Principal extends JavaPlugin implements Listener {
                 if (slot == 22) abrirListaKits(p, false);
                 else if (slot == 49) abrirListaKits(p, true);
             } else {
-                // Si está en una subsección y da click a volver
                 if (slot == 49) abrirMenuPrincipal(p);
             }
         }
     }
 
-    // Comando /akits
     public class KitsCommand implements CommandExecutor {
         @Override
         public boolean onCommand(CommandSender s, Command cmd, String label, String[] args) {
-            if (s instanceof Player) {
-                abrirMenuPrincipal((Player) s);
-            } else {
-                s.sendMessage("Este comando solo es para jugadores.");
-            }
+            if (s instanceof Player) abrirMenuPrincipal((Player) s);
             return true;
         }
     }

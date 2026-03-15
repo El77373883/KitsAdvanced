@@ -32,12 +32,17 @@ public class Principal extends JavaPlugin implements Listener {
 
     public String c(String m) { return ChatColor.translateAlternateColorCodes('&', m); }
 
-    // --- EL NUEVO CREADOR QUE NO FALLA ---
-    private ItemStack crearItem(Material mat, String nombre, int data) {
+    // --- EL MÉTODO QUE ACEPTA TODO (FIJATE EN EL String... lore) ---
+    private ItemStack crearItem(Material mat, String nombre, int data, String... lore) {
         ItemStack item = new ItemStack(mat, 1, (short) data);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(c(nombre));
+            if (lore.length > 0) {
+                List<String> lista = new ArrayList<>();
+                for (String s : lore) lista.add(c(s));
+                meta.setLore(lista);
+            }
             item.setItemMeta(meta);
         }
         return item;
@@ -47,8 +52,8 @@ public class Principal extends JavaPlugin implements Listener {
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Menú Global de Kits"));
         for (int i = 0; i < 54; i++) inv.setItem(i, crearItem(Material.STAINED_GLASS_PANE, " ", 0));
         
-        inv.setItem(22, crearItem(Material.CHEST, "&a&lKITS GRATUITOS", 0));
-        inv.setItem(49, crearItem(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", 0));
+        inv.setItem(22, crearItem(Material.CHEST, "&a&lKITS GRATUITOS", 0, "&7Click para ver kits normales."));
+        inv.setItem(49, crearItem(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", 0, "&7Click para ver kits VIP."));
         p.openInventory(inv);
     }
 
@@ -65,7 +70,8 @@ public class Principal extends JavaPlugin implements Listener {
             for (File f : archivos) {
                 FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
                 if (cf.getBoolean("premium") == premium) {
-                    inv.addItem(crearItem(Material.CHEST, "&e" + cf.getString("nombre_visual"), 0));
+                    String id = f.getName().replace(".yml", "");
+                    inv.addItem(crearItem(Material.CHEST, "&e" + cf.getString("nombre_visual"), 0, "&7ID: " + id, "&eClick para editar"));
                 }
             }
         }
@@ -78,10 +84,10 @@ public class Principal extends JavaPlugin implements Listener {
         FileConfiguration cf = getKitConfig(id);
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Ajustes: " + id));
         
-        inv.setItem(11, crearItem(Material.REDSTONE, "&ePermiso Status", 0));
-        inv.setItem(12, crearItem(Material.SUNFLOWER, "&ePrecio", 0));
-        inv.setItem(13, crearItem(Material.CLOCK, "&eCooldown", 0));
-        inv.setItem(16, crearItem(Material.NAME_TAG, "&eNombre Visual", 0));
+        inv.setItem(11, crearItem(Material.REDSTONE, "&ePermiso Status", 0, "&7Estado: " + cf.getBoolean("permiso_status")));
+        inv.setItem(12, crearItem(Material.SUNFLOWER, "&ePrecio", 0, "&7Actual: " + cf.getDouble("precio")));
+        inv.setItem(13, crearItem(Material.CLOCK, "&eCooldown", 0, "&7Actual: " + cf.getLong("cooldown")));
+        inv.setItem(16, crearItem(Material.NAME_TAG, "&eNombre Visual", 0, "&7Actual: " + cf.getString("nombre_visual")));
         inv.setItem(19, crearItem(cf.getBoolean("premium") ? Material.DIAMOND : Material.EMERALD, "&bCategoría VIP", 0));
         inv.setItem(21, crearItem(Material.BARRIER, "&c&lELIMINAR KIT", 0));
         inv.setItem(49, crearItem(Material.ARROW, "&c« Volver", 0));

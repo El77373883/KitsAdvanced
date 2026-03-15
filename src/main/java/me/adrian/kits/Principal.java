@@ -111,7 +111,7 @@ public class Principal extends JavaPlugin implements Listener {
         inv.setItem(12, createItem(Material.SUNFLOWER, "&e&l3. Precio", false, "&7Actual: &a$" + conf.getDouble("precio")));
         inv.setItem(13, createItem(Material.CLOCK, "&b&l4. Cooldown", cool, "&7Tiempo: &e" + conf.getInt("cooldown-segundos") + "s"));
         inv.setItem(14, createItem(Material.SOUL_SAND, "&b&l5. Kit Temporal", temp, "&7Duración: &e" + conf.getString("duracion-temp"), "&8(Derecho: Tiempo)"));
-        inv.setItem(20, createItem(Material.PAINTING, "&d&l6. Cambiar Icono", false, "&7Actual: &f" + conf.getString("icono")));
+        inv.setItem(20, createItem(Material.PAINTING, "&d&l6. Cambiar Icono", false, "&7Actual: &f" + conf.getString("icono"), "&e▶ Click para elegir ítem"));
         inv.setItem(21, createItem(Material.NAME_TAG, "&f&l7. Modificar Nombre", false));
         inv.setItem(22, createItem(Material.EMERALD, "&a&l8. Tipo: " + (pre ? "&dPREMIUM" : "&aGRATIS"), pre));
         inv.setItem(24, createItem(Material.BARRIER, "&4&l9. ELIMINAR KIT", false));
@@ -148,14 +148,39 @@ public class Principal extends JavaPlugin implements Listener {
                 if (e.getClick() == ClickType.RIGHT) { p.closeInventory(); modoChat.put(p.getUniqueId(), "TEMP_TIME"); }
                 else { toggle(p, cf, "es-temporal", k); abrirOpcionesKit(p, k); }
             }
-            if (e.getRawSlot() == 20) { p.closeInventory(); modoChat.put(p.getUniqueId(), "ICONO"); }
+            if (e.getRawSlot() == 20) abrirSelectorIcono(p, k);
             if (e.getRawSlot() == 21) { p.closeInventory(); modoChat.put(p.getUniqueId(), "NOMBRE"); }
             if (e.getRawSlot() == 24) { new File(getDataFolder() + "/kits", k + ".yml").delete(); abrirPanelAdmin(p); }
             if (e.getRawSlot() == 40) abrirPanelAdmin(p);
+        } else if (t.startsWith("Icono de: ")) {
+            if (e.getRawSlot() == 15) { 
+                e.setCancelled(true);
+                ItemStack itemPuesto = e.getInventory().getItem(11);
+                if (itemPuesto == null || itemPuesto.getType() == Material.AIR) {
+                    p.sendMessage(c("&c&l✘ &7Pon un ítem en el cuadro vacío."));
+                } else {
+                    FileConfiguration cf = getKitConfig(k);
+                    cf.set("icono", itemPuesto.getType().name());
+                    guardarKit(k, cf);
+                    p.sendMessage(c("&a&l✔ &fSe ha cambiado exitosamente"));
+                    p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+                    abrirOpcionesKit(p, k);
+                }
+            } else if (e.getRawSlot() != 11) { 
+                e.setCancelled(true);
+            }
         } else if (t.equals("MENÚ DE KITS")) {
             e.setCancelled(true);
             darKit(p, ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).replace("Kit: ", ""));
         }
+    }
+
+    private void abrirSelectorIcono(Player p, String k) {
+        Inventory inv = Bukkit.createInventory(null, 27, c("&0Icono de: " + k));
+        for (int i = 0; i < 27; i++) inv.setItem(i, createItem(Material.BLACK_STAINED_GLASS_PANE, " ", false));
+        inv.setItem(11, null); 
+        inv.setItem(15, createItem(Material.LIME_STAINED_GLASS_PANE, "&a&l✔ GUARDAR ICONO", true, "&7Haz click aquí para", "&7confirmar el cambio."));
+        p.openInventory(inv);
     }
 
     @EventHandler
@@ -175,7 +200,6 @@ public class Principal extends JavaPlugin implements Listener {
                     if (modo.equals("PRECIO")) cf.set("precio", Double.parseDouble(msg));
                     if (modo.equals("COOLDOWN")) { cf.set("cooldown-segundos", Integer.parseInt(msg)); cf.set("cooldown-activado", true); }
                     if (modo.equals("TEMP_TIME")) { cf.set("duracion-temp", msg); cf.set("es-temporal", true); }
-                    if (modo.equals("ICONO")) cf.set("icono", Material.valueOf(msg.toUpperCase()).name());
                     if (modo.equals("NOMBRE")) {
                         new File(getDataFolder() + "/kits", k + ".yml").renameTo(new File(getDataFolder() + "/kits", msg + ".yml"));
                         abrirOpcionesKit(p, msg);
@@ -255,8 +279,9 @@ public class Principal extends JavaPlugin implements Listener {
 
     @EventHandler
     public void alCerrar(InventoryCloseEvent e) {
-        if (ChatColor.stripColor(e.getView().getTitle()).startsWith("Items de: ")) {
-            String k = ChatColor.stripColor(e.getView().getTitle()).replace("Items de: ", "");
+        String t = ChatColor.stripColor(e.getView().getTitle());
+        if (t.startsWith("Items de: ")) {
+            String k = t.replace("Items de: ", "");
             FileConfiguration cf = getKitConfig(k);
             List<ItemStack> list = new ArrayList<>();
             for (ItemStack i : e.getInventory().getContents()) if (i != null && i.getType() != Material.AIR) list.add(i);
@@ -270,11 +295,10 @@ public class Principal extends JavaPlugin implements Listener {
         mt.setDisplayName(c(n)); List<String> l = new ArrayList<>();
         for (String s : lore) l.add(c(s)); mt.setLore(l);
         if (g) { 
-            // METODO DE SEGURIDAD EXTREMA: Maven no verá nombres de encantamientos aquí.
             for (Enchantment e : Enchantment.values()) {
                 if (e != null) {
                     mt.addEnchant(e, 1, true);
-                    break; // Solo necesitamos uno para el brillo
+                    break;
                 }
             }
             mt.addItemFlags(ItemFlag.HIDE_ENCHANTS); 

@@ -198,7 +198,9 @@ public class Principal extends JavaPlugin implements Listener {
             for (String str : lore) l.add(color(str));
             mt.setLore(l);
             if (brillo) {
-                mt.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 1, true);
+                // He cambiado Enchanment.PROTECTION_ENVIRONMENTAL por Enchantment.PROTECTION
+                // Esto es compatible con las versiones más recientes.
+                mt.addEnchant(Enchantment.PROTECTION, 1, true);
                 mt.addItemFlags(ItemFlag.HIDE_ENCHANTS);
             }
             i.setItemMeta(mt);

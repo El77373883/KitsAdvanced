@@ -32,36 +32,34 @@ public class Principal extends JavaPlugin implements Listener {
 
     public String c(String m) { return ChatColor.translateAlternateColorCodes('&', m); }
 
-    // --- EL MÉTODO QUE ACEPTA TODO (FIJATE EN EL String... lore) ---
-    private ItemStack crearItem(Material mat, String nombre, int data, String... lore) {
-        ItemStack item = new ItemStack(mat, 1, (short) data);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(c(nombre));
-            if (lore.length > 0) {
-                List<String> lista = new ArrayList<>();
-                for (String s : lore) lista.add(c(s));
-                meta.setLore(lista);
+    // --- EL MÉTODO QUE NO PUEDE DAR ERROR (SÚPER SIMPLE) ---
+    private ItemStack item(Material m, String n, int d, String lore) {
+        ItemStack i = new ItemStack(m, 1, (short) d);
+        ItemMeta mt = i.getItemMeta();
+        if (mt != null) {
+            mt.setDisplayName(c(n));
+            if (!lore.isEmpty()) {
+                mt.setLore(Arrays.asList(c(lore).split("\n")));
             }
-            item.setItemMeta(meta);
+            i.setItemMeta(mt);
         }
-        return item;
+        return i;
     }
 
     public void abrirMenuPrincipal(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Menú Global de Kits"));
-        for (int i = 0; i < 54; i++) inv.setItem(i, crearItem(Material.STAINED_GLASS_PANE, " ", 0));
+        for (int i = 0; i < 54; i++) inv.setItem(i, item(Material.STAINED_GLASS_PANE, " ", 0, ""));
         
-        inv.setItem(22, crearItem(Material.CHEST, "&a&lKITS GRATUITOS", 0, "&7Click para ver kits normales."));
-        inv.setItem(49, crearItem(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", 0, "&7Click para ver kits VIP."));
+        inv.setItem(22, item(Material.CHEST, "&a&lKITS GRATUITOS", 0, "&7Click para ver kits normales."));
+        inv.setItem(49, item(Material.DIAMOND_BLOCK, "&b&lSECCIÓN PREMIUM", 0, "&7Click para ver kits VIP."));
         p.openInventory(inv);
     }
 
     public void abrirListaKits(Player p, boolean premium) {
         Inventory inv = Bukkit.createInventory(null, 54, c(premium ? "&bSección VIP" : "&aSección Gratuita"));
-        int color = premium ? 3 : 5;
+        int col = premium ? 3 : 5;
         for (int i = 0; i < 54; i++) {
-            if (i < 9 || i > 44 || i % 9 == 0 || (i + 1) % 9 == 0) inv.setItem(i, crearItem(Material.STAINED_GLASS_PANE, " ", color));
+            if (i < 9 || i > 44 || i % 9 == 0 || (i + 1) % 9 == 0) inv.setItem(i, item(Material.STAINED_GLASS_PANE, " ", col, ""));
         }
 
         File folder = new File(getDataFolder(), "kits");
@@ -71,11 +69,11 @@ public class Principal extends JavaPlugin implements Listener {
                 FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
                 if (cf.getBoolean("premium") == premium) {
                     String id = f.getName().replace(".yml", "");
-                    inv.addItem(crearItem(Material.CHEST, "&e" + cf.getString("nombre_visual"), 0, "&7ID: " + id, "&eClick para editar"));
+                    inv.addItem(item(Material.CHEST, "&e" + cf.getString("nombre_visual"), 0, "&7ID: " + id + "\n&eClick para editar"));
                 }
             }
         }
-        inv.setItem(49, crearItem(Material.ARROW, "&c« Volver", 0));
+        inv.setItem(49, item(Material.ARROW, "&c« Volver", 0, ""));
         p.openInventory(inv);
     }
 
@@ -84,13 +82,13 @@ public class Principal extends JavaPlugin implements Listener {
         FileConfiguration cf = getKitConfig(id);
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Ajustes: " + id));
         
-        inv.setItem(11, crearItem(Material.REDSTONE, "&ePermiso Status", 0, "&7Estado: " + cf.getBoolean("permiso_status")));
-        inv.setItem(12, crearItem(Material.SUNFLOWER, "&ePrecio", 0, "&7Actual: " + cf.getDouble("precio")));
-        inv.setItem(13, crearItem(Material.CLOCK, "&eCooldown", 0, "&7Actual: " + cf.getLong("cooldown")));
-        inv.setItem(16, crearItem(Material.NAME_TAG, "&eNombre Visual", 0, "&7Actual: " + cf.getString("nombre_visual")));
-        inv.setItem(19, crearItem(cf.getBoolean("premium") ? Material.DIAMOND : Material.EMERALD, "&bCategoría VIP", 0));
-        inv.setItem(21, crearItem(Material.BARRIER, "&c&lELIMINAR KIT", 0));
-        inv.setItem(49, crearItem(Material.ARROW, "&c« Volver", 0));
+        inv.setItem(11, item(Material.REDSTONE, "&ePermiso Status", 0, "&7Estado: " + cf.getBoolean("permiso_status")));
+        inv.setItem(12, item(Material.SUNFLOWER, "&ePrecio", 0, "&7Actual: " + cf.getDouble("precio")));
+        inv.setItem(13, item(Material.CLOCK, "&eCooldown", 0, "&7Actual: " + cf.getLong("cooldown")));
+        inv.setItem(16, item(Material.NAME_TAG, "&eNombre Visual", 0, "&7Actual: " + cf.getString("nombre_visual")));
+        inv.setItem(19, item(cf.getBoolean("premium") ? Material.DIAMOND : Material.EMERALD, "&bCategoría VIP", 0, ""));
+        inv.setItem(21, item(Material.BARRIER, "&c&lELIMINAR KIT", 0, ""));
+        inv.setItem(49, item(Material.ARROW, "&c« Volver", 0, ""));
         p.openInventory(inv);
     }
 
@@ -119,7 +117,7 @@ public class Principal extends JavaPlugin implements Listener {
             else if (slot == 13) { p.closeInventory(); esperandoCooldown.put(p.getUniqueId(), id); return; }
             else if (slot == 16) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), id); return; }
             else if (slot == 19) cf.set("premium", !cf.getBoolean("premium"));
-            else if (slot == 21) { f.delete(); p.closeInventory(); p.sendMessage(c("&cKit eliminado.")); return; }
+            else if (slot == 21) { f.delete(); p.closeInventory(); p.sendMessage(c("&cKit borrado.")); return; }
             else if (slot == 49) { abrirMenuPrincipal(p); return; }
             
             saveKit(f, cf);
@@ -135,13 +133,12 @@ public class Principal extends JavaPlugin implements Listener {
         else if (esperandoCooldown.containsKey(p.getUniqueId())) actualizarDato(p, e, "cooldown", esperandoCooldown, true);
     }
 
-    private void actualizarDato(Player p, AsyncPlayerChatEvent e, String ruta, Map<UUID, String> mapa, boolean esNum) {
+    private void actualizarDato(Player p, AsyncPlayerChatEvent e, String ruta, Map<UUID, String> mapa, boolean n) {
         e.setCancelled(true);
         String id = mapa.remove(p.getUniqueId());
         FileConfiguration cf = getKitConfig(id);
-        if (esNum) {
-            try { cf.set(ruta, Double.parseDouble(e.getMessage())); } catch (Exception ex) {}
-        } else { cf.set(ruta, e.getMessage()); }
+        if (n) { try { cf.set(ruta, Double.parseDouble(e.getMessage())); } catch (Exception ex) {} }
+        else { cf.set(ruta, e.getMessage()); }
         saveKit(new File(getDataFolder(), "kits/" + id + ".yml"), cf);
         Bukkit.getScheduler().runTask(this, () -> abrirEditorKit(p, id));
     }

@@ -1,6 +1,5 @@
 package me.adrian.kits;
 
-import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -21,7 +20,6 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -36,16 +34,13 @@ public class Principal extends JavaPlugin implements Listener {
         saveDefaultConfig();
         Bukkit.getPluginManager().registerEvents(this, this);
         getCommand("akits").setExecutor(new KitsCommand());
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new KitsPlaceholders().register();
-        }
     }
 
     private String getMsg(String ruta) {
         String lang = getConfig().getString("idioma", "es");
         String prefix = getConfig().getString("mensajes." + lang + ".prefix", "");
         String mensaje = getConfig().getString("mensajes." + lang + "." + ruta, "");
-        return ChatColor.translateAlternateColorCodes('&', prefix + mensaje);
+        return color(prefix + mensaje);
     }
 
     public class KitsCommand implements CommandExecutor {
@@ -136,8 +131,12 @@ public class Principal extends JavaPlugin implements Listener {
             e.setCancelled(true);
             String viejo = esperandoNombre.remove(p.getUniqueId());
             String nuevo = e.getMessage().toLowerCase();
-            getConfig().set("kits." + nuevo, getConfig().getConfigurationSection("kits." + viejo));
-            getConfig().set("kits." + viejo, null); saveConfig();
+            ConfigurationSection sec = getConfig().getConfigurationSection("kits." + viejo);
+            if (sec != null) {
+                getConfig().set("kits." + nuevo, sec);
+                getConfig().set("kits." + viejo, null); 
+                saveConfig();
+            }
             Bukkit.getScheduler().runTask(this, () -> abrirOpcionesKit(p, nuevo));
         }
     }
@@ -179,8 +178,9 @@ public class Principal extends JavaPlugin implements Listener {
 
     @EventHandler
     public void alCerrar(InventoryCloseEvent e) {
-        if (ChatColor.stripColor(e.getView().getTitle()).startsWith("Editor: ")) {
-            String k = ChatColor.stripColor(e.getView().getTitle()).replace("Editor: ", "");
+        String title = ChatColor.stripColor(e.getView().getTitle());
+        if (title.startsWith("Editor: ")) {
+            String k = title.replace("Editor: ", "");
             List<ItemStack> c = new ArrayList<>();
             for (ItemStack i : e.getInventory().getContents()) if (i != null && i.getType() != Material.AIR) c.add(i);
             getConfig().set("kits." + k + ".items", c); saveConfig();
@@ -198,19 +198,11 @@ public class Principal extends JavaPlugin implements Listener {
             for (String str : lore) l.add(color(str));
             mt.setLore(l);
             if (brillo) {
-                mt.addEnchant(Enchantment.DURABILITY, 1, true);
+                mt.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 1, true);
                 mt.addItemFlags(ItemFlag.HIDE_ENCHANTS);
             }
             i.setItemMeta(mt);
         }
         return i;
-    }
-
-    public class KitsPlaceholders extends PlaceholderExpansion {
-        @Override public @NotNull String getIdentifier() { return "akits"; }
-        @Override public @NotNull String getAuthor() { return "Adrian"; }
-        @Override public @NotNull String getVersion() { return "4.5"; }
-        @Override public boolean persist() { return true; }
-        @Override public String onPlaceholderRequest(Player p, @NotNull String params) { return null; }
     }
 }

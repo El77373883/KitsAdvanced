@@ -1,12 +1,21 @@
 name: AdvancedKits
 version: 1.0
 main: me.adrian.kits.Principal
-api-version: 1.20 # O la versión que estés usando
+api-version: 1.16
+author: Adrian
+description: Sistema de kits avanzado con logs y discord webhooks.
+depend: [Vault]
+
 commands:
   akits:
-    description: Comando principal de kits
+    description: Comando principal para abrir el menú de kits.
+    usage: /<command>
     aliases: [kits, kit]
+
 permissions:
   kitsadvanced.admin:
-    description: Permite usar el panel de administrador
+    description: Permiso para acceder al panel de administración y editar kits.
+    default: op
+  akits.admin.bypass:
+    description: Permiso para saltarse el tiempo de espera (cooldown) de los kits.
     default: op

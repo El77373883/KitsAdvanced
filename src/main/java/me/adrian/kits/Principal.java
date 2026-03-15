@@ -70,7 +70,6 @@ public class Principal extends JavaPlugin implements Listener {
         p.openInventory(inv);
     }
 
-    // --- EDITORES ---
     public void abrirEditorContenido(Player p, String id) {
         configurandoItems.put(p.getUniqueId(), id);
         Inventory inv = Bukkit.createInventory(null, 45, c("&8Items de: " + id));
@@ -79,14 +78,14 @@ public class Principal extends JavaPlugin implements Listener {
         if (items != null) {
             for (Object item : items) { if (item instanceof ItemStack) inv.addItem((ItemStack) item); }
         }
-        inv.setItem(40, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ÍTEMS", true, (short) 0, "&7Click para guardar todo."));
+        inv.setItem(40, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ÍTEMS", true, (short) 0));
         p.openInventory(inv);
     }
 
     public void abrirEditorIcono(Player p, String id) {
         configurandoIcono.put(p.getUniqueId(), id);
         Inventory inv = Bukkit.createInventory(null, 27, c("&8Icono de: " + id));
-        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, (short) 0, "&7Pon el item en el centro (13)."));
+        inv.setItem(22, createItem(Material.EMERALD_BLOCK, "&a&lGUARDAR ICONO", true, (short) 0));
         p.openInventory(inv);
     }
 
@@ -95,16 +94,16 @@ public class Principal extends JavaPlugin implements Listener {
         FileConfiguration cf = getKitConfig(id);
         Inventory inv = Bukkit.createInventory(null, 54, c("&8Ajustes: " + id));
         
-        inv.setItem(10, createItem(Material.CHEST, "&61. Editar ítems", true, (short) 0, "&7Añade o quita objetos del kit."));
-        inv.setItem(11, createItem(Material.REDSTONE, "&e2. Permiso", cf.getBoolean("permiso_status"), (short) 0, "&7Estado: " + cf.getBoolean("permiso_status")));
-        inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, (short) 0, "&7Precio: $" + cf.getDouble("precio")));
-        inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, (short) 0, "&7Tiempo: " + cf.getLong("cooldown") + "s"));
-        inv.setItem(15, createItem(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, (short) 0, "&7Cambia la imagen del kit."));
-        inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, (short) 0, "&7Nombre: " + cf.getString("nombre_visual")));
+        inv.setItem(10, createItem(Material.CHEST, "&61. Editar ítems", true, (short) 0));
+        inv.setItem(11, createItem(Material.REDSTONE, "&e2. Permiso", cf.getBoolean("permiso_status"), (short) 0));
+        inv.setItem(12, createItem(Material.SUNFLOWER, "&e3. Precio", cf.getDouble("precio") > 0, (short) 0));
+        inv.setItem(13, createItem(Material.CLOCK, "&b4. Cooldown", cf.getLong("cooldown") > 0, (short) 0));
+        inv.setItem(15, createItem(Material.ITEM_FRAME, "&d6. Cambiar Icono", true, (short) 0));
+        inv.setItem(16, createItem(Material.NAME_TAG, "&f7. Nombre Visual", true, (short) 0));
         
         boolean esPre = cf.getBoolean("premium");
         inv.setItem(19, createItem(esPre ? Material.DIAMOND : Material.EMERALD, "&a8. Categoría", true, (short) 0, esPre ? "&bPREMIUM" : "&aGRATIS"));
-        inv.setItem(21, createItem(Material.BARRIER, "&c&l10. ELIMINAR KIT", false, (short) 0, "&4¡CUIDADO! Borra el archivo .yml"));
+        inv.setItem(21, createItem(Material.BARRIER, "&c&l10. ELIMINAR KIT", false, (short) 0));
 
         inv.setItem(49, createItem(Material.ARROW, "&c« Volver", false, (short) 0));
         p.openInventory(inv);
@@ -148,22 +147,22 @@ public class Principal extends JavaPlugin implements Listener {
             e.setCancelled(true);
             String id = editandoKit.get(p.getUniqueId());
             File f = new File(getDataFolder(), "kits/" + id + ".yml");
-            FileConfiguration cf = YamlConfiguration.loadConfiguration(f);
+            FileConfiguration config = YamlConfiguration.loadConfiguration(f);
             
             if (slot == 10) { abrirEditorContenido(p, id); return; }
-            else if (slot == 11) cf.set("permiso_status", !cf.getBoolean("permiso_status"));
+            else if (slot == 11) config.set("permiso_status", !config.getBoolean("permiso_status"));
             else if (slot == 12) { p.closeInventory(); esperandoPrecio.put(p.getUniqueId(), id); return; }
             else if (slot == 13) { p.closeInventory(); esperandoCooldown.put(p.getUniqueId(), id); return; }
             else if (slot == 15) { abrirEditorIcono(p, id); return; }
             else if (slot == 16) { p.closeInventory(); esperandoNombre.put(p.getUniqueId(), id); return; }
             else if (slot == 19) {
-                boolean b = !cf.getBoolean("premium");
-                cf.set("premium", b);
-                cf.set("icono", b ? "DIAMOND_SWORD" : "STONE_SWORD");
+                boolean b = !config.getBoolean("premium");
+                config.set("premium", b);
+                config.set("icono", b ? "DIAMOND_SWORD" : "STONE_SWORD");
             } else if (slot == 21) { f.delete(); p.closeInventory(); p.sendMessage(c("&cKit eliminado.")); return; }
             else if (slot == 49) { abrirMenuPrincipal(p); return; }
             
-            saveKit(f, cf);
+            saveKit(f, config);
             abrirEditorKit(p, id);
         }
     }
@@ -180,9 +179,8 @@ public class Principal extends JavaPlugin implements Listener {
         e.setCancelled(true);
         String id = mapa.remove(p.getUniqueId());
         FileConfiguration config = getKitConfig(id);
-        if (n) {
-            try { config.set(ruta, Double.parseDouble(e.getMessage())); } catch (Exception ex) {}
-        } else { config.set(ruta, e.getMessage()); }
+        if (n) { try { config.set(ruta, Double.parseDouble(e.getMessage())); } catch (Exception ex) {} }
+        else { config.set(ruta, e.getMessage()); }
         saveKit(new File(getDataFolder(), "kits/" + id + ".yml"), config);
         Bukkit.getScheduler().runTask(this, () -> abrirEditorKit(p, id));
     }
@@ -190,13 +188,13 @@ public class Principal extends JavaPlugin implements Listener {
     private void saveKit(File f, FileConfiguration c) { try { c.save(f); } catch (IOException e) {} }
     private FileConfiguration getKitConfig(String k) { return YamlConfiguration.loadConfiguration(new File(getDataFolder(), "kits/" + k + ".yml")); }
 
-    // --- EL MÉTODO QUE SOLUCIONA LOS ERRORES ---
+    // --- MÉTODOS DE CREACIÓN DE ITEMS (ARREGLADOS) ---
     private ItemStack createItem(Material m, String n, boolean g, short d, String... lore) {
         ItemStack item = new ItemStack(m, 1, d);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(c(n));
-            if (lore != null && lore.length > 0) {
+            if (lore.length > 0) {
                 List<String> list = new ArrayList<>();
                 for (String s : lore) list.add(c(s));
                 meta.setLore(list);

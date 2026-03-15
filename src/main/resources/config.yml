@@ -1,26 +1,32 @@
 # ============================================
-#       KitsAdvanced - Sistema de Mensajes
+#       KitsAdvanced - Configuration
 # ============================================
+# Language / Idioma: 'en' or 'es'
+idioma: en
 
-prefix: "&8[&bKitsAdvanced&8] &7» "
-
-messages:
-  # Mensajes de Creación y Errores
-  kit-created: "&a&l¡ÉXITO! &eEl kit &b%kit% &eha sido creado correctamente."
-  kit-exists: "&c&lERROR: &7Ya existe un kit llamado &f%kit%&7. Usa otro nombre."
-  kit-not-found: "&c&lERROR: &7No se encontró ningún kit con el nombre &f%kit%&7."
-  kit-deleted: "&6&lAVISO: &eEl kit &f%kit% &eha sido eliminado para siempre."
+# Sistema de Mensajes Personalizables
+mensajes:
+  es:
+    prefix: "&8[&bKitsAdvanced&8] &7» "
+    kit-received: "&b&lKITS &8| &eHas recibido el kit &f%kit%&e. ¡Disfrútalo!"
+    no-permission: "&4&l¡VAYA! &cNo tienes los permisos necesarios para esto."
+    reload: "&a&lRECARGA: &7La configuración ha sido actualizada sin lag."
+    kit-created: "&a&l¡ÉXITO! &eEl kit &b%kit% &eha sido creado correctamente."
+    wait: "&c&lESPERA: &7Faltan &e%time% &7para volver a usarlo."
   
-  # Mensajes de Uso
-  kit-received: "&b&lKITS &8| &eHas recibido el kit &f%kit%&e. ¡Disfrútalo!"
-  no-permission: "&4&l¡VAYA! &cNo tienes los permisos necesarios para esto."
-  reload: "&a&lRECARGA: &7La configuración ha sido actualizada sin lag."
+  en:
+    prefix: "&8[&bKitsAdvanced&8] &7» "
+    kit-received: "&b&lKITS &8| &eYou received the &f%kit% &ekit. Enjoy!"
+    no-permission: "&4&lWHOOPS! &cYou don't have permission for this."
+    reload: "&a&lRELOAD: &7Configuration updated with zero lag."
+    kit-created: "&a&lSUCCESS! &eThe kit &b%kit% &ehas been created."
+    wait: "&c&lWAIT: &7You need to wait &e%time% &7more."
 
 # Configuración técnica
 settings:
   inventory-name: "&0&lPanel de Kits"
-  inventory-slots: 27
   sound-on-receive: "ENTITY_PLAYER_LEVELUP"
 
-# Lista de Kits (se irán guardando aquí)
+# Datos internos (No editar manualmente)
 kits: {}
+usuarios: {}

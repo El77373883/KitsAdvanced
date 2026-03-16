@@ -1,68 +1,16 @@
-name: AdvancedKits
-version: 2.2.0
-main: me.adrian.advancedkits.AdvancedKitsPlugin
+name: KitsAdvanced
+version: 1.0
+main: me.adrian.kits.Principal
 api-version: '1.21'
-author: Adrian
-description: Plugin profesional de kits con panel, preview, cooldowns, SQLite, PlaceholderAPI y paginacion real.
-softdepend:
-  - PlaceholderAPI
-
+softdepend: [PlaceholderAPI]
 commands:
   akits:
-    description: Comando principal de AdvancedKits
+    description: Sistema de kits avanzado
     usage: /akits
-    aliases: [advancedkits, kitspanel]
-    permission: advancedkits.use
-
 permissions:
-  advancedkits.*:
-    description: Acceso total al plugin
-    default: op
-    children:
-      advancedkits.use: true
-      advancedkits.admin: true
-      advancedkits.help: true
-      advancedkits.list: true
-      advancedkits.version: true
-      advancedkits.panel: true
-      advancedkits.reload: true
-      advancedkits.create: true
-      advancedkits.delete: true
-      advancedkits.edit: true
-      advancedkits.preview: true
-      advancedkits.claim: true
-      advancedkits.give: true
-      advancedkits.resetcooldown: true
-      advancedkits.premium: true
-
-  advancedkits.use:
+  akits.use:
     default: true
-  advancedkits.help:
-    default: true
-  advancedkits.list:
-    default: true
-  advancedkits.version:
-    default: true
-  advancedkits.panel:
-    default: true
-  advancedkits.preview:
-    default: true
-  advancedkits.claim:
-    default: true
-
-  advancedkits.admin:
+  akits.admin:
     default: op
-  advancedkits.reload:
-    default: op
-  advancedkits.create:
-    default: op
-  advancedkits.delete:
-    default: op
-  advancedkits.edit:
-    default: op
-  advancedkits.give:
-    default: op
-  advancedkits.resetcooldown:
-    default: op
-  advancedkits.premium:
-    default: op
+  akits.premium:
+    default: false

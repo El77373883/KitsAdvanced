@@ -1,16 +1,19 @@
-name: KitsAdvanced
+name: AdvancedKits
 version: 1.0
 main: me.adrian.kits.Principal
 api-version: '1.21'
-softdepend: [PlaceholderAPI]
+softdepend:
+  - PlaceholderAPI
+
 commands:
   akits:
-    description: Sistema de kits avanzado
+    description: Comando principal de AdvancedKits
     usage: /akits
+
 permissions:
   akits.use:
     default: true
   akits.admin:
     default: op
   akits.premium:
-    default: false
+    default: op

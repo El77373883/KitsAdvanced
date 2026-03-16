@@ -1,21 +1,68 @@
 name: AdvancedKits
-version: 1.0
-main: me.adrian.kits.Principal
-api-version: 1.16
+version: 2.2.0
+main: me.adrian.advancedkits.AdvancedKitsPlugin
+api-version: '1.21'
 author: Adrian
-description: Sistema de kits avanzado con logs y discord webhooks.
-depend: [Vault]
+description: Plugin profesional de kits con panel, preview, cooldowns, SQLite, PlaceholderAPI y paginacion real.
+softdepend:
+  - PlaceholderAPI
 
 commands:
   akits:
-    description: Comando principal para abrir el menú de kits.
-    usage: /<command>
-    aliases: [kits, kit]
+    description: Comando principal de AdvancedKits
+    usage: /akits
+    aliases: [advancedkits, kitspanel]
+    permission: advancedkits.use
 
 permissions:
-  kitsadvanced.admin:
-    description: Permiso para acceder al panel de administración y editar kits.
+  advancedkits.*:
+    description: Acceso total al plugin
     default: op
-  akits.admin.bypass:
-    description: Permiso para saltarse el tiempo de espera (cooldown) de los kits.
+    children:
+      advancedkits.use: true
+      advancedkits.admin: true
+      advancedkits.help: true
+      advancedkits.list: true
+      advancedkits.version: true
+      advancedkits.panel: true
+      advancedkits.reload: true
+      advancedkits.create: true
+      advancedkits.delete: true
+      advancedkits.edit: true
+      advancedkits.preview: true
+      advancedkits.claim: true
+      advancedkits.give: true
+      advancedkits.resetcooldown: true
+      advancedkits.premium: true
+
+  advancedkits.use:
+    default: true
+  advancedkits.help:
+    default: true
+  advancedkits.list:
+    default: true
+  advancedkits.version:
+    default: true
+  advancedkits.panel:
+    default: true
+  advancedkits.preview:
+    default: true
+  advancedkits.claim:
+    default: true
+
+  advancedkits.admin:
+    default: op
+  advancedkits.reload:
+    default: op
+  advancedkits.create:
+    default: op
+  advancedkits.delete:
+    default: op
+  advancedkits.edit:
+    default: op
+  advancedkits.give:
+    default: op
+  advancedkits.resetcooldown:
+    default: op
+  advancedkits.premium:
     default: op
